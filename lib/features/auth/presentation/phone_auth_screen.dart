@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
@@ -25,23 +28,35 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authControllerProvider.notifier).sendPhoneOtp(_phoneCtrl.text.trim());
-    final state = ref.read(authControllerProvider);
-    if (state.hasError && mounted) {
-      _showError(state.error.toString());
-      return;
-    }
-    if (mounted) {
-      context.push('/auth/otp', extra: {'phone': '+91${_phoneCtrl.text.trim()}'});
-    }
+    final ok = await ref
+        .read(authControllerProvider.notifier)
+        .sendPhoneOtp(_phoneCtrl.text.trim());
+    if (!ok || !mounted) return;
+    context.push(AppRoutes.authOtp, extra: {
+      'phone': '+91${_phoneCtrl.text.trim()}',
+      'type': 'phone',
+    });
+  }
+
+  Future<void> _googleSignIn() async {
+    await ref.read(authControllerProvider.notifier).signInWithGoogle();
+    // Navigation handled by auth state change via router redirect
+  }
+
+  Future<void> _appleSignIn() async {
+    await ref.read(authControllerProvider.notifier).signInWithApple();
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg.replaceAll('Exception:', '').trim()),
+    Get.showSnackbar(GetSnackBar(
+      message: msg,
       backgroundColor: AppColors.error,
+      borderRadius: 12,
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 3),
+      snackPosition: SnackPosition.BOTTOM,
     ));
   }
 
@@ -49,80 +64,344 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
     final tt = Theme.of(context).textTheme;
+    final size = MediaQuery.sizeOf(context);
+
+    ref.listen(authControllerProvider, (prev, next) {
+      if (next.error != null && next.error != prev?.error) {
+        _showError(next.error!);
+      }
+    });
 
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
-              const Icon(Icons.auto_awesome, size: 48, color: AppColors.accent)
-                  .animate().scale(duration: 400.ms),
-              const SizedBox(height: 24),
-              Text('Welcome to\nAstrobless', style: tt.headlineLarge)
-                  .animate().fadeIn(delay: 100.ms).slideY(begin: 0.2),
-              const SizedBox(height: 8),
-              Text(
-                'Your cosmic guide to clarity',
-                style: tt.bodyMedium?.copyWith(color: AppColors.textSecondary),
-              ).animate().fadeIn(delay: 200.ms),
-              const SizedBox(height: 48),
-              Text('Mobile Number',
-                      style: tt.labelMedium?.copyWith(color: AppColors.textSecondary))
-                  .animate().fadeIn(delay: 300.ms),
-              const SizedBox(height: 6),
-              Form(
-                key: _formKey,
-                child: TextFormField(
-                  controller: _phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
-                  ],
-                  validator: Validators.phone,
-                  decoration: InputDecoration(
-                    hintText: '9876543210',
-                    prefixText: '+91  ',
-                    prefixStyle:
-                        tt.bodyMedium?.copyWith(color: AppColors.textPrimary),
-                    prefixIcon:
-                        const Icon(Icons.phone_outlined, size: 18),
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                ),
-              ).animate().fadeIn(delay: 350.ms),
-              const SizedBox(height: 24),
-              AppButton(
-                label: 'Send OTP',
-                onPressed: _submit,
-                loading: state.isLoading,
-              ).animate().fadeIn(delay: 400.ms),
-              const SizedBox(height: 20),
-              Center(
-                child: TextButton(
-                  onPressed: () => context.push('/auth/email'),
-                  child: Text(
-                    'Use Email instead',
-                    style: tt.bodyMedium?.copyWith(color: AppColors.primary),
-                  ),
-                ),
-              ).animate().fadeIn(delay: 450.ms),
-              const SizedBox(height: 32),
-              Center(
-                child: Text(
-                  'By continuing, you agree to our Terms & Privacy Policy',
-                  style: tt.labelSmall?.copyWith(color: AppColors.textDisabled),
-                  textAlign: TextAlign.center,
-                ),
-              ).animate().fadeIn(delay: 500.ms),
-            ],
+      body: Stack(
+        children: [
+          // Background gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0D0B1E), Color(0xFF1A1740), Color(0xFF0D0B1E)],
+                stops: [0.0, 0.5, 1.0],
+              ),
+            ),
           ),
-        ),
+          // Decorative circles
+          Positioned(
+            top: -60,
+            right: -60,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 100,
+            left: -80,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: 28,
+                vertical: size.height * 0.04,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Logo + brand
+                  Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.accent],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.auto_awesome,
+                            color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      Text('Astrobless',
+                          style: tt.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            letterSpacing: 0.5,
+                          )),
+                    ],
+                  ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.2),
+
+                  SizedBox(height: size.height * 0.06),
+
+                  Text('Welcome back',
+                          style: tt.headlineMedium?.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ))
+                      .animate()
+                      .fadeIn(delay: 100.ms)
+                      .slideY(begin: 0.2),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign in to continue your cosmic journey',
+                    style: tt.bodyMedium
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ).animate().fadeIn(delay: 150.ms),
+
+                  SizedBox(height: size.height * 0.05),
+
+                  // Phone field
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Mobile Number',
+                                style: tt.labelMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    letterSpacing: 0.3))
+                            .animate()
+                            .fadeIn(delay: 200.ms),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
+                          validator: Validators.phone,
+                          style: tt.bodyLarge
+                              ?.copyWith(color: AppColors.textPrimary),
+                          decoration: InputDecoration(
+                            hintText: '98765 43210',
+                            hintStyle: TextStyle(
+                                color: AppColors.textDisabled, fontSize: 16),
+                            prefixIcon: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 14),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('🇮🇳',
+                                      style: TextStyle(fontSize: 20)),
+                                  const SizedBox(width: 6),
+                                  Text('+91',
+                                      style: tt.bodyLarge?.copyWith(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w600)),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    width: 1,
+                                    height: 20,
+                                    color: AppColors.borderDark,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 18),
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _sendOtp(),
+                        ).animate().fadeIn(delay: 250.ms),
+                        const SizedBox(height: 20),
+                        AppButton(
+                          label: 'Continue with OTP',
+                          onPressed: state.isLoading ? null : _sendOtp,
+                          loading: state.isLoading,
+                        ).animate().fadeIn(delay: 300.ms),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(
+                          child: Divider(color: AppColors.borderDark, height: 1)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text('or continue with',
+                            style: tt.labelSmall
+                                ?.copyWith(color: AppColors.textDisabled)),
+                      ),
+                      Expanded(
+                          child: Divider(color: AppColors.borderDark, height: 1)),
+                    ],
+                  ).animate().fadeIn(delay: 350.ms),
+
+                  const SizedBox(height: 20),
+
+                  // Social buttons row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SocialButton(
+                          label: 'Google',
+                          icon: _GoogleIcon(),
+                          onPressed: state.isLoading ? null : _googleSignIn,
+                        ),
+                      ),
+                      if (Platform.isIOS) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _SocialButton(
+                            label: 'Apple',
+                            icon: const Icon(Icons.apple,
+                                color: AppColors.textPrimary, size: 22),
+                            onPressed: state.isLoading ? null : _appleSignIn,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ).animate().fadeIn(delay: 400.ms),
+
+                  const SizedBox(height: 20),
+
+                  // Email option
+                  Center(
+                    child: TextButton(
+                      onPressed: () => context.push(AppRoutes.authEmail),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.email_outlined, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Use Email instead',
+                              style: tt.bodyMedium
+                                  ?.copyWith(color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 450.ms),
+
+                  const SizedBox(height: 24),
+
+                  Center(
+                    child: Text(
+                      'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                      style: tt.labelSmall
+                          ?.copyWith(color: AppColors.textDisabled),
+                      textAlign: TextAlign.center,
+                    ),
+                  ).animate().fadeIn(delay: 500.ms),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+  final String label;
+  final Widget icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        side: BorderSide(color: AppColors.borderDark, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: AppColors.surfaceDark.withValues(alpha: 0.5),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          icon,
+          const SizedBox(width: 8),
+          Text(label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  )),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoogleIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 22,
+      height: 22,
+      child: CustomPaint(painter: _GoogleLogoPainter()),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  const _GoogleLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Blue arc
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        -0.5, 1.6, true, paint);
+    // Red arc
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        1.1, 1.1, true, paint);
+    // Yellow arc
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        2.2, 1.1, true, paint);
+    // Green arc
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        3.3, 1.1, true, paint);
+    // White center
+    paint.color = AppColors.bgDark;
+    canvas.drawCircle(center, radius * 0.55, paint);
+    // Blue right rectangle
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawRect(
+      Rect.fromLTWH(center.dx, center.dy - radius * 0.2,
+          radius * 0.95, radius * 0.4),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

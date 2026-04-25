@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/astrologers_repository.dart';
 import '../domain/astrologer_models.dart';
@@ -247,7 +248,7 @@ class _AstrologerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
     return GestureDetector(
-      onTap: () => context.push('/astrologers/${astrologer.id}'),
+      onTap: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -342,7 +343,7 @@ class _AstrologerCard extends StatelessWidget {
                                   color: AppColors.textDisabled,
                                   fontSize: 10)),
                           Text(
-                            '₹${(astrologer.pricePerMinChatPaise / 100).toStringAsFixed(0)}/min',
+                            '₹${(astrologer.pricePerMinChat / 100).toStringAsFixed(0)}/min',
                             style: tt.labelMedium?.copyWith(
                                 color: AppColors.accent,
                                 fontWeight: FontWeight.w700),
@@ -358,7 +359,7 @@ class _AstrologerCard extends StatelessWidget {
                                   color: AppColors.textDisabled,
                                   fontSize: 10)),
                           Text(
-                            '₹${(astrologer.pricePerMinCallPaise / 100).toStringAsFixed(0)}/min',
+                            '₹${(astrologer.pricePerMinCall / 100).toStringAsFixed(0)}/min',
                             style: tt.labelMedium?.copyWith(
                                 color: AppColors.accent,
                                 fontWeight: FontWeight.w700),
@@ -395,7 +396,7 @@ class _AstrologerCard extends StatelessWidget {
                           height: 32,
                           child: ElevatedButton.icon(
                             onPressed: () => context
-                                .push('/astrologers/${astrologer.id}'),
+                                .push(AppRoutes.astrologerDetail(astrologer.id)),
                             icon: const Icon(Icons.chat_bubble_outline,
                                 size: 14),
                             label: const Text('Chat'),

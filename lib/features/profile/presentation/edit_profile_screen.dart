@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/services/upload_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/profile_repository.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -17,12 +18,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _emailCtrl = TextEditingController();
 
   bool _isSaving = false;
+  bool _loaded = false;
 
-  // Photo upload state
   File? _pickedPhoto;
   String? _uploadedTempKey;
   bool _isUploadingPhoto = false;
   double _uploadProgress = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      _loaded = true;
+      final profile = ref.read(profileNotifierProvider).valueOrNull;
+      if (profile != null) {
+        _nameCtrl.text = profile.name ?? '';
+        _emailCtrl.text = profile.email ?? '';
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -30,8 +44,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _emailCtrl.dispose();
     super.dispose();
   }
-
-  // ── Photo pick + immediate presign upload ─────────────────────────────────
 
   Future<void> _pickAndUploadPhoto() async {
     final picker = ImagePicker();
@@ -83,6 +95,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final profile = ref.watch(profileNotifierProvider).valueOrNull;
+
+    // Seed fields once data arrives if not yet loaded manually
+    if (profile != null && !_loaded) {
+      _nameCtrl.text = profile.name ?? '';
+      _emailCtrl.text = profile.email ?? '';
+      _loaded = true;
+    }
+
+    final existingImageUrl = profile?.profileImageUrl;
 
     return Scaffold(
       backgroundColor: AppColors.bgDark,
@@ -105,16 +127,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          // Avatar
           Center(
             child: Stack(
               children: [
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                  backgroundImage:
-                      _pickedPhoto != null ? FileImage(_pickedPhoto!) : null,
-                  child: _pickedPhoto == null
+                  backgroundImage: _pickedPhoto != null
+                      ? FileImage(_pickedPhoto!) as ImageProvider
+                      : (existingImageUrl != null
+                          ? NetworkImage(existingImageUrl)
+                          : null),
+                  child: (_pickedPhoto == null && existingImageUrl == null)
                       ? const Icon(Icons.person, size: 44, color: AppColors.primary)
                       : null,
                 ),
@@ -162,7 +186,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           const SizedBox(height: 32),
 
-          // Name field
           _buildLabel(tt, 'Full Name'),
           const SizedBox(height: 6),
           _buildTextField(
@@ -172,7 +195,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Email field
           _buildLabel(tt, 'Email'),
           const SizedBox(height: 6),
           _buildTextField(
@@ -183,7 +205,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
           const SizedBox(height: 40),
 
-          // Save button (mobile-friendly large tap target)
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -205,7 +226,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w600)),
+                  : const Text('Save Changes',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),
           const SizedBox(height: 80),
@@ -245,22 +267,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.primary),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
       );
 
   Future<void> _save() async {
     setState(() => _isSaving = true);
     try {
-      // TODO: call profile update API with _uploadedTempKey as profileImageUrl.
-      // Backend calls moveFromTempIfNeeded(_uploadedTempKey) to finalise.
-      // Example:
-      // await ref.read(profileRepositoryProvider).updateProfile(
-      //   name: _nameCtrl.text.trim(),
-      //   email: _emailCtrl.text.trim(),
-      //   profileImageUrl: _uploadedTempKey,
-      // );
-      await Future.delayed(const Duration(milliseconds: 600));
+      await ref.read(profileNotifierProvider.notifier).saveProfile(
+            name: _nameCtrl.text.trim().isEmpty ? null : _nameCtrl.text.trim(),
+            email:
+                _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+            profileImageUrl: _uploadedTempKey,
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated')),

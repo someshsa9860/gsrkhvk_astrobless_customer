@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen_ai_chat_ui/flutter_gen_ai_chat_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/ai_chat_repository.dart';
 
@@ -132,7 +133,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         ),
         actions: [
           TextButton.icon(
-            onPressed: () => context.push('/astrologers'),
+            onPressed: () => context.push(AppRoutes.astrologers),
             icon: const Icon(Icons.person_outline, size: 16),
             label: const Text('Human', style: TextStyle(fontSize: 12)),
             style: TextButton.styleFrom(foregroundColor: AppColors.accent),

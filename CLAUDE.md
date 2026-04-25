@@ -56,7 +56,7 @@ This is the **customer-facing app**. Customers use it to:
 1. **Follow root `CLAUDE.md` exactly.**
 2. **`camelCase` for Dart code, `snake_case` for file names.**
 3. **No token in insecure storage.** Tokens in `flutter_secure_storage` only.
-4. **Money is `int` (paise) everywhere.** Never `double`. Format at display layer only.
+4. **Money is `int` everywhere.** Stored as smallest currency unit (1/100 of ₹1). Never `double`. Format at display layer only via `formatAmount()`.
 5. **JWT audience is `astrobless.customer`.** Never call `/v1/astrologer/*` or `/v1/admin/*`.
 6. **All API calls through the `ApiClient` singleton** (Dio instance).
 7. **Riverpod only for state.** No `setState` in non-trivial widgets.
@@ -64,6 +64,121 @@ This is the **customer-facing app**. Customers use it to:
 9. **Generated files not edited manually.** Run `build_runner`.
 10. **Every catch block that swallows errors** must report to telemetry.
 11. **No hardcoded base URL, API keys, or config.** Use `AppConfig`.
+12. **No hardcoded route strings.** Every navigation path must use a constant from `lib/core/router/app_routes.dart`. Never write `context.go('/some/path')` inline.
+13. **GetX for overlays only.** `Get.showSnackbar(GetSnackBar(...))` is allowed for context-free error toasts. Never use GetX for state or routing.
+
+---
+
+## 3a. Strict no-hardcode policy
+
+These rules apply to **every file in this project**. A PR review fails if any of these are violated.
+
+### 3a.1 No hardcoded text
+
+**Every user-visible string** must come from the ARB localization file. No exceptions for "short" labels.
+
+```dart
+// ✗ Wrong
+Text('Send Reset Code'),
+ElevatedButton(child: Text('Continue')),
+
+// ✓ Right
+Text(AppLocalizations.of(context).sendResetCode),
+ElevatedButton(child: Text(l10n.continueButton)),
+```
+
+**Adding a new string:**
+1. Add the key to `lib/l10n/app_en.arb` (and other locale files)
+2. Run `dart run build_runner build --delete-conflicting-outputs`
+3. Use `AppLocalizations.of(context).yourKey` in widgets
+
+**Exception:** Internal debug strings (in `debugPrint` / logging) do not need localization.
+
+### 3a.2 No hardcoded text styles
+
+**Every `TextStyle` must reference a token** from `Theme.of(context).textTheme` or `AppTextStyles`. Never write raw `TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF...))` inline.
+
+```dart
+// ✗ Wrong
+Text('Title', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFECEFF1))),
+
+// ✓ Right
+Text('Title', style: tt.headlineMedium?.copyWith(color: AppColors.textPrimary)),
+Text('Title', style: AppTextStyles.headingLarge),
+```
+
+Define any new reusable style in `lib/core/theme/app_text_styles.dart`.
+
+### 3a.3 No hardcoded colors
+
+**Every color must come from `AppColors`** (`lib/core/theme/app_colors.dart`). Never use `Color(0xFFABCDEF)` or `Colors.blue` inline.
+
+```dart
+// ✗ Wrong
+Container(color: Color(0xFF0D0B1E)),
+Icon(Icons.check, color: Colors.green),
+
+// ✓ Right
+Container(color: AppColors.bgDark),
+Icon(Icons.check, color: AppColors.success),
+```
+
+Theme-controlled colors (primary, secondary, surface) must use the backend-fetched theme — see §3b.
+
+### 3a.4 No hardcoded API routes
+
+**Every endpoint path must be a constant** in `lib/core/network/endpoints.dart`. Never write a path string inline anywhere.
+
+```dart
+// ✗ Wrong
+await _client.post('/customer/auth/email/forgot-password', data: body);
+
+// ✓ Right
+await _client.post(Endpoints.auth.forgotPassword, data: body);
+```
+
+### 3a.5 No hardcoded navigation paths
+
+Every navigation call uses `AppRoutes` constants:
+
+```dart
+// ✗ Wrong
+context.go('/auth/phone');
+
+// ✓ Right
+context.go(AppRoutes.authPhone);
+```
+
+---
+
+## 3b. Backend-controlled theme system
+
+The admin panel controls the app's colors in real-time. The customer app must fetch and apply the active theme from the backend on every launch.
+
+### How it works
+
+**Backend endpoint:**
+```
+GET /v1/public/app-theme?audience=customer
+→ { primaryColor, secondaryColor, accentColor, bgDark, bgLight, textPrimary, textSecondary, success, warning, error }
+```
+
+All values are hex strings (e.g. `"#5C6BC0"`). If a value is not overridden in admin, the backend returns the default.
+
+**App integration:**
+- `appThemeColorsProvider` (in `lib/core/theme/app_theme_provider.dart`) fetches this on startup
+- `AppTheme.dark(colors)` and `AppTheme.light(colors)` consume a `ThemeColors` object built from the response
+- `app.dart` watches `appThemeColorsProvider` and rebuilds `MaterialApp.router` when colors change
+- Last fetched theme is cached in `SharedPreferences` as a fallback
+
+**Adding a new theme token:**
+1. Add the field to `ThemeColors` class
+2. Add `appSettings` key in backend (`theme.newToken`)
+3. Add it to the `/v1/public/app-theme` endpoint
+4. Use it in `AppTheme` builders
+5. Reference it as `AppColors.yourToken` (derived from theme colors, not hardcoded)
+
+**Fallback behavior:** If the API call fails, use the default `ThemeColors` with hardcoded values. The app must never crash or show a blank screen due to a failed theme fetch. Cached values take priority over defaults when fresh fetch is unavailable.
 
 ---
 
@@ -81,11 +196,7 @@ This is the **customer-facing app**. Customers use it to:
 
 ### 4.2 Token storage
 
-```dart
-// lib/core/auth/token_storage.dart
-static const _accessKey  = 'customer_access_token';
-static const _refreshKey = 'customer_refresh_token';
-```
+Tokens are stored in `flutter_secure_storage` under the keys `customer_access_token` and `customer_refresh_token`. See `lib/core/auth/token_storage.dart`.
 
 ### 4.3 Auth endpoints (customer)
 
@@ -113,16 +224,21 @@ Silent refresh via Dio interceptor on 401. On double-401 → clear tokens → na
 
 ### MVP
 - [ ] Phone OTP + email+password + Google + Apple auth
-- [ ] Home screen: banners, feature grid, trending astrologers, stories, videos, AI chat card
+- [ ] Home screen: banners (from `Banner` model), feature grid, trending astrologers, stories, videos, AI chat card
 - [ ] AI chat screen (streamed, astrology-only, flutter_gen_ai_chat_ui)
 - [ ] Browse + search astrologers (filter by specialty, language, price, rating)
+- [ ] Follow / unfollow astrologer (`AstrologerFollower`)
+- [ ] Block astrologer (`AstrologerBlock`)
 - [ ] Chat consultation (Socket.IO, per-minute billing)
 - [ ] Voice call consultation (Agora)
-- [ ] Wallet: view balance, top up (Razorpay, PhonePe, GPay, Apple Pay)
+- [ ] Wallet: view balance, top up via recharge packs (`RechargePack`) with optional coupon (`Coupon`)
 - [ ] Multiple Kundli profiles per user (saved in DB)
 - [ ] Kundli report (cached in DB, not re-fetched each time)
-- [ ] Kundli matching (user selects two kundlis)
+- [ ] Kundli matching (user selects two kundlis → `KundliMatch`)
+- [ ] Saved delivery addresses (`CustomerAddress`)
 - [ ] Daily / weekly / monthly horoscopes
+- [ ] Referral program (`ReferralReward`)
+- [ ] Support tickets (`SupportTicket` + `SupportTicketMessage`)
 - [ ] Notification center
 - [ ] Consultation history
 - [ ] Profile management
@@ -131,8 +247,7 @@ Silent refresh via Dio interceptor on 401. On double-401 → clear tokens → na
 ### v1.1
 - [ ] Video calls (Agora)
 - [ ] AstroMall (browse + order products)
-- [ ] Puja booking
-- [ ] Referral system
+- [ ] Puja booking (`PujaTemplate`, `PujaSlot`, `PujaBooking`)
 - [ ] Daily panchang
 - [ ] Tarot / numerology tools
 - [ ] Live streaming
@@ -165,7 +280,7 @@ user_app/
 │   │   ├── cache/
 │   │   │   └── cache_service.dart       # SharedPreferences-backed cache with TTL
 │   │   ├── utils/
-│   │   │   ├── format_utils.dart        # formatPaise, formatDate, formatDateTime
+│   │   │   ├── format_utils.dart        # formatAmount, formatDate, formatDateTime
 │   │   │   └── validators.dart          # Phone, email, password validators
 │   │   └── widgets/                     # Shared widgets
 │   │       ├── app_button.dart
@@ -244,11 +359,29 @@ user_app/
 │       │   └── presentation/
 │       │       └── notifications_screen.dart
 │       │
-│       └── profile/
-│           ├── data/profile_repository.dart
+│       ├── profile/
+│       │   ├── data/profile_repository.dart
+│       │   └── presentation/
+│       │       ├── profile_screen.dart
+│       │       └── edit_profile_screen.dart
+│       │
+│       ├── addresses/
+│       │   └── presentation/
+│       │       ├── address_list_screen.dart
+│       │       └── add_address_screen.dart
+│       │
+│       ├── support/
+│       │   └── presentation/
+│       │       ├── support_tickets_screen.dart
+│       │       ├── ticket_detail_screen.dart
+│       │       └── new_ticket_screen.dart
+│       │
+│       └── puja/                          # v1.1
+│           ├── data/puja_repository.dart
 │           └── presentation/
-│               ├── profile_screen.dart
-│               └── edit_profile_screen.dart
+│               ├── puja_list_screen.dart
+│               ├── puja_detail_screen.dart
+│               └── puja_booking_screen.dart
 │
 ├── test/
 ├── integration_test/
@@ -388,6 +521,11 @@ PATCH /profile { name?, dob?, gender?, profileImageUrl? }
 GET  /astrologers ?search=&specialty=&language=&minRating=&maxPrice=&isOnline=&sort=&page=&limit=
 GET  /astrologers/:id
 GET  /astrologers/:id/reviews
+POST /astrologers/:id/follow
+DELETE /astrologers/:id/follow
+GET  /astrologers/following               → list of followed astrologers
+POST /astrologers/:id/block
+DELETE /astrologers/:id/block
 
 # Consultations
 POST /consultations/request { astrologerId, type: 'chat'|'voice'|'video' }
@@ -402,8 +540,12 @@ POST /ai/chat/stream { messages, kundliProfileId? } → SSE stream
 # Wallet
 GET  /wallet
 GET  /wallet/transactions
-POST /wallet/topup { amountPaise, providerKey, idempotencyKey }
+POST /wallet/topup { amount, providerKey, idempotencyKey, couponCode? }
 GET  /wallet/providers
+GET  /wallet/recharge-packs               → active RechargePack list
+
+# Coupons
+POST /coupons/validate { code, amount }  → { valid, discountAmount }
 
 # Kundli
 POST /kundli/profiles { name, dateOfBirth, timeOfBirth?, placeOfBirth, lat, lng }
@@ -411,6 +553,31 @@ GET  /kundli/profiles
 GET  /kundli/profiles/:id
 DELETE /kundli/profiles/:id
 GET  /kundli/profiles/:id/report  → cached kundli data
+POST /kundli/match { profileAId, profileBId } → KundliMatch (cached result)
+GET  /kundli/matches              → list of previous match results
+
+# Addresses
+GET  /addresses
+POST /addresses { label, line1, line2?, city, state, pincode, country }
+PATCH /addresses/:id
+DELETE /addresses/:id
+PATCH /addresses/:id/set-default
+
+# Support tickets
+POST /support/tickets { category, subject, description, attachmentUrls? }
+GET  /support/tickets
+GET  /support/tickets/:id
+POST /support/tickets/:id/messages { body }
+POST /support/tickets/:id/close
+
+# Puja (v1.1)
+GET  /puja/templates ?category=&occasion=
+GET  /puja/templates/:slug
+GET  /puja/templates/:id/slots ?from=&to=
+POST /puja/bookings { pujaTemplateId, pujaPackageTierId, scheduledAt, devoteeName, gotra?, specialRequests?, deliveryAddress?, paymentMethod }
+GET  /puja/bookings
+GET  /puja/bookings/:id
+POST /puja/bookings/:id/cancel { reason }
 
 # Horoscope
 GET  /horoscopes/today/:zodiacSign
@@ -433,24 +600,12 @@ GET  /v1/public/horoscopes/today/:sign
 
 ## 12. UI design language
 
-Same design system as partner app:
-
-```dart
-// Dark-first palette
-class AppColors {
-  static const primary      = Color(0xFF5C6BC0);  // deep indigo
-  static const accent       = Color(0xFFFFB300);  // warm gold
-  static const bgDark       = Color(0xFF0D0B1E);  // near-black navy
-  static const cardDark     = Color(0xFF1E1B3A);  // slightly lighter navy
-  static const surfaceDark  = Color(0xFF231F54);  // card surface
-  static const borderDark   = Color(0xFF2D2A5E);  // subtle border
-  static const success      = Color(0xFF4CAF50);
-  static const error        = Color(0xFFF44336);
-  static const textPrimary  = Color(0xFFECEFF1);
-  static const textSecondary= Color(0xFFB0BEC5);
-  static const textDisabled = Color(0xFF546E7A);
-}
-```
+Same design system as partner app. Colors are defined in `lib/core/theme/app_colors.dart`. Key values:
+- Primary (deep indigo): `#5C6BC0`
+- Accent (warm gold): `#FFB300`
+- Dark mode backgrounds: `#0D0B1E` (bg), `#1E1B3A` (card), `#231F54` (surface), `#2D2A5E` (border)
+- Status: success `#4CAF50`, error `#F44336`
+- Text (dark mode): primary `#ECEFF1`, secondary `#B0BEC5`, disabled `#546E7A`
 
 - Font: Inter via google_fonts
 - Dark mode is default; honors `ThemeMode.system`
@@ -488,24 +643,7 @@ Same as partner_app CLAUDE.md §20. Key points:
 
 ## 16. Environment config
 
-```dart
-// lib/core/config/app_config.dart
-class AppConfig {
-  static const apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL', defaultValue: 'http://localhost:3000/v1/customer',
-  );
-  static const publicApiBaseUrl = String.fromEnvironment(
-    'PUBLIC_API_BASE_URL', defaultValue: 'http://localhost:3000/v1/public',
-  );
-  static const wsBaseUrl = String.fromEnvironment(
-    'WS_BASE_URL', defaultValue: 'ws://localhost:3000',
-  );
-  static const agoraAppId     = String.fromEnvironment('AGORA_APP_ID');
-  static const googleMapsKey  = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
-  static const sentryDsn      = String.fromEnvironment('SENTRY_DSN', defaultValue: '');
-  static const isDev          = bool.fromEnvironment('IS_DEV', defaultValue: true);
-}
-```
+`AppConfig` in `lib/core/config/app_config.dart` reads all values via `String.fromEnvironment` / `bool.fromEnvironment` at compile time. Values: `apiBaseUrl` (default `http://localhost:3000/v1/customer`), `publicApiBaseUrl` (default `http://localhost:3000/v1/public`), `wsBaseUrl` (default `ws://localhost:3000`), `agoraAppId`, `googleMapsKey`, `sentryDsn`, `isDev`.
 
 ---
 
@@ -520,4 +658,4 @@ class AppConfig {
 
 ---
 
-_Last updated: 2026-04-22. Keep this file alive._
+_Last updated: 2026-04-25. Keep this file alive._

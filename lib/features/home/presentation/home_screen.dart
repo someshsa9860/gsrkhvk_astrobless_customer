@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../core/theme/app_colors.dart';
@@ -29,19 +30,21 @@ class HomeScreen extends ConsumerWidget {
         },
         child: ListView(
           padding: EdgeInsets.zero,
-          children: const [
-            _BannerSection(),
-            SizedBox(height: 20),
-            _FeatureGrid(),
-            SizedBox(height: 20),
-            _TrendingAstrologers(),
-            SizedBox(height: 20),
-            _StoriesRow(),
-            SizedBox(height: 20),
-            _LearningVideos(),
-            SizedBox(height: 20),
-            _AiChatCard(),
-            SizedBox(height: 32),
+          children: [
+            const _BannerSection(),
+            const SizedBox(height: 20),
+            const _FeatureGrid(),
+            const SizedBox(height: 20),
+            const _HoroscopeTeaserCard(),
+            const SizedBox(height: 20),
+            const _TrendingAstrologers(),
+            const SizedBox(height: 20),
+            const _StoriesRow(),
+            const SizedBox(height: 20),
+            const _LearningVideos(),
+            const SizedBox(height: 20),
+            const _AiChatCard(),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -74,10 +77,10 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
-          onPressed: () => context.push('/notifications'),
+          onPressed: () => context.push(AppRoutes.notifications),
         ),
         GestureDetector(
-          onTap: () => context.push('/profile'),
+          onTap: () => context.push(AppRoutes.profile),
           child: Padding(
             padding: const EdgeInsets.only(right: 16),
             child: CircleAvatar(
@@ -356,7 +359,7 @@ class _TrendingAstrologers extends ConsumerWidget {
             children: [
               Text('Trending Astrologers', style: tt.titleMedium),
               TextButton(
-                onPressed: () => context.push('/astrologers'),
+                onPressed: () => context.push(AppRoutes.astrologers),
                 child: Text('See all',
                     style: tt.labelMedium?.copyWith(color: AppColors.primary)),
               ),
@@ -410,7 +413,7 @@ class _AstrologerCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return GestureDetector(
-      onTap: () => context.push('/astrologers/${astrologer.id}'),
+      onTap: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
       child: Container(
         width: 150,
         padding: const EdgeInsets.all(12),
@@ -478,7 +481,7 @@ class _AstrologerCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '${formatPaise(astrologer.pricePerMinChatPaise)}/min',
+                  '${formatCurrency(astrologer.pricePerMinChat.toDouble())}/min',
                   style: tt.labelSmall?.copyWith(color: AppColors.textSecondary, fontSize: 10),
                 ),
               ],
@@ -488,7 +491,7 @@ class _AstrologerCard extends StatelessWidget {
               width: double.infinity,
               height: 30,
               child: ElevatedButton(
-                onPressed: () => context.push('/astrologers/${astrologer.id}'),
+                onPressed: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: EdgeInsets.zero,
@@ -784,6 +787,115 @@ class _VideoCard extends StatelessWidget {
   }
 }
 
+// ─── Horoscope Teaser Card ────────────────────────────────────────────────
+
+const _zodiacSigns = [
+  ('♈', 'aries'), ('♉', 'taurus'), ('♊', 'gemini'), ('♋', 'cancer'),
+  ('♌', 'leo'),   ('♍', 'virgo'),  ('♎', 'libra'),  ('♏', 'scorpio'),
+  ('♐', 'sagittarius'), ('♑', 'capricorn'), ('♒', 'aquarius'), ('♓', 'pisces'),
+];
+
+class _HoroscopeTeaserCard extends StatelessWidget {
+  const _HoroscopeTeaserCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1A1040), Color(0xFF2D1B69)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF5C4BA0).withValues(alpha: 0.6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+              child: Row(
+                children: [
+                  const Text('🔭', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Daily Horoscope',
+                            style: tt.titleMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700)),
+                        Text('Pick your sign to read today\'s cosmic forecast',
+                            style: tt.labelSmall
+                                ?.copyWith(color: Colors.white60)),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push(AppRoutes.horoscope),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('View All',
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Sign grid — 2 rows of 6
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 6,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 1,
+                ),
+                itemCount: _zodiacSigns.length,
+                itemBuilder: (_, i) {
+                  final (sym, slug) = _zodiacSigns[i];
+                  return GestureDetector(
+                    onTap: () => context.push(AppRoutes.horoscope),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12)),
+                      ),
+                      child: Center(
+                        child: Text(sym,
+                            style: const TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+    );
+  }
+}
+
 // ─── AI Chat Card ─────────────────────────────────────────────────────────
 
 class _AiChatCard extends StatelessWidget {
@@ -794,7 +906,7 @@ class _AiChatCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return GestureDetector(
-      onTap: () => context.push('/ai-chat'),
+      onTap: () => context.push(AppRoutes.aiChat),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(20),

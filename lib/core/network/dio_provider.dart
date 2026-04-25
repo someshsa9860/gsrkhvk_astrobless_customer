@@ -1,9 +1,13 @@
+import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../auth/token_storage.dart';
 import '../auth/auth_notifier.dart';
+import '../security/security_interceptor.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(
@@ -17,6 +21,8 @@ final dioProvider = Provider<Dio>((ref) {
     },
   ));
 
+  _applyCertPinning(dio);
+  dio.interceptors.add(SecurityInterceptor());
   dio.interceptors.add(_AuthInterceptor(dio, ref));
 
   if (kDebugMode) {
@@ -29,6 +35,18 @@ final dioProvider = Provider<Dio>((ref) {
 
   return dio;
 });
+
+void _applyCertPinning(Dio dio) {
+  if (!AppConfig.enableCertPinning || AppConfig.certSha256Fingerprint.isEmpty) return;
+  final expected = AppConfig.certSha256Fingerprint.toLowerCase().replaceAll(':', '');
+  (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+    return HttpClient()
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+        final fingerprint = sha256.convert(cert.der).toString();
+        return fingerprint == expected;
+      };
+  };
+}
 
 final publicDioProvider = Provider<Dio>((ref) {
   return Dio(BaseOptions(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/astrologers_repository.dart';
 
@@ -171,8 +172,8 @@ class AstrologerProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 32),
                     _PriceAndCTA(
-                      chatPaise: a.pricePerMinChatPaise,
-                      callPaise: a.pricePerMinCallPaise,
+                      chatPrice: a.pricePerMinChat,
+                      callPrice: a.pricePerMinCall,
                       isOnline: a.isOnline,
                       isBusy: a.isBusy,
                       astrologerId: a.id,
@@ -314,14 +315,14 @@ class _Tag extends StatelessWidget {
 
 class _PriceAndCTA extends StatelessWidget {
   const _PriceAndCTA({
-    required this.chatPaise,
-    required this.callPaise,
+    required this.chatPrice,
+    required this.callPrice,
     required this.isOnline,
     required this.isBusy,
     required this.astrologerId,
   });
-  final int chatPaise;
-  final int callPaise;
+  final double chatPrice;
+  final double callPrice;
   final bool isOnline;
   final bool isBusy;
   final String astrologerId;
@@ -350,7 +351,7 @@ class _PriceAndCTA extends StatelessWidget {
                         style: tt.labelSmall
                             ?.copyWith(color: AppColors.textSecondary)),
                     Text(
-                      '₹${(chatPaise / 100).toStringAsFixed(0)}/min',
+                      '₹${chatPrice.toStringAsFixed(0)}/min',
                       style: tt.titleMedium?.copyWith(
                           color: AppColors.accent,
                           fontWeight: FontWeight.w800),
@@ -366,7 +367,7 @@ class _PriceAndCTA extends StatelessWidget {
                         style: tt.labelSmall
                             ?.copyWith(color: AppColors.textSecondary)),
                     Text(
-                      '₹${(callPaise / 100).toStringAsFixed(0)}/min',
+                      '₹${callPrice.toStringAsFixed(0)}/min',
                       style: tt.titleMedium?.copyWith(
                           color: AppColors.accent,
                           fontWeight: FontWeight.w800),
@@ -399,7 +400,7 @@ class _PriceAndCTA extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => context
-                        .push('/consultation/chat/$astrologerId'),
+                        .push(AppRoutes.consultationChat(astrologerId)),
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('Chat'),
                     style: ElevatedButton.styleFrom(

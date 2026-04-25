@@ -16,7 +16,7 @@ class WalletRepository {
     return Wallet.fromJson(data);
   }
 
-  /// Fetches the full wallet transaction ledger (append-only, paise amounts).
+  /// Fetches the full wallet transaction ledger (append-only).
   Future<List<WalletTransaction>> fetchTransactions() async {
     final list = await _client.fetchWalletTransactions();
     return list

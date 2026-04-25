@@ -38,6 +38,9 @@ abstract final class Endpoints {
   /// In-app notification routes (`/notifications/*`).
   static const notifications = _NotificationEndpoints._();
 
+  /// Customer profile routes (`/profile`).
+  static const profile = _ProfileEndpoints._();
+
   /// Image upload route (`/upload/*`).
   static const uploads = _UploadEndpoints._();
 
@@ -78,6 +81,12 @@ final class _AuthEndpoints {
   /// `POST` – Sign in via Google ID token (Android / iOS).
   String get googleLogin => '/auth/google';
 
+  /// `POST` – Sign in via Apple identity token (iOS only).
+  String get appleLogin => '/auth/apple';
+
+  /// `POST` – Send an email OTP for login (not signup verification).
+  String get sendEmailLoginOtp => '/auth/email/send-otp';
+
   /// `POST` – Rotate the refresh token and receive a fresh access token.
   String get refresh => '/auth/refresh';
 
@@ -92,7 +101,7 @@ final class _AstrologerEndpoints {
 
   /// `GET` – Paginated list of astrologers with search / filter support.
   /// Query params: `search`, `specialty`, `language`, `isOnline`,
-  /// `minRating`, `maxPricePaise`, `sort`, `page`, `limit`.
+  /// `minRating`, `maxPrice`, `sort`, `page`, `limit`.
   String get list => '/astrologers';
 
   /// `GET` – Full profile for a single astrologer.
@@ -167,6 +176,18 @@ final class _ConsultationEndpoints {
   String end(String id) => '/consultations/$id/end';
 }
 
+// ─── Profile ───────────────────────────────────────────────────────────────
+
+final class _ProfileEndpoints {
+  const _ProfileEndpoints._();
+
+  /// `GET` – Fetch the current customer's full profile.
+  String get get => '/profile';
+
+  /// `PATCH` – Update name, email, dob, gender, or profileImageUrl.
+  String get update => '/profile';
+}
+
 // ─── Notifications ─────────────────────────────────────────────────────────
 
 final class _NotificationEndpoints {
@@ -226,6 +247,9 @@ final class _PublicEndpoints {
 
   /// `GET` – Monthly horoscope for [zodiacSign].
   String monthlyHoroscope(String zodiacSign) => '/horoscopes/monthly/$zodiacSign';
+
+  /// `GET` – Yearly horoscope for [zodiacSign].
+  String yearlyHoroscope(String zodiacSign) => '/horoscopes/yearly/$zodiacSign';
 
   /// `GET` – Current brand theme colors.
   String get theme => '/settings/theme';

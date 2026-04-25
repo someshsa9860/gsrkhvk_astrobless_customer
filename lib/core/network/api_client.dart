@@ -137,6 +137,35 @@ class ApiClient {
     return res.data['data'] as Map<String, dynamic>;
   }
 
+  /// Authenticates via Apple identity token.
+  Future<Map<String, dynamic>> appleLogin({
+    required String identityToken,
+    required String nonce,
+    String? name,
+  }) async {
+    final res = await post(Endpoints.auth.appleLogin, data: {
+      'identityToken': identityToken,
+      'nonce': nonce,
+      if (name != null && name.isNotEmpty) 'name': name,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Sends an email OTP for login (separate from signup verify-otp flow).
+  Future<void> sendEmailLoginOtp(String email) async {
+    await post(Endpoints.auth.sendEmailLoginOtp, data: {'email': email});
+  }
+
+  /// Sends a password reset link to [email].
+  Future<void> forgotPassword(String email) async {
+    await post(Endpoints.auth.forgotPassword, data: {'email': email});
+  }
+
+  /// Revokes the current session (best-effort — fire and forget).
+  Future<void> logout(String refreshToken) async {
+    await delete(Endpoints.auth.logout, data: {'refreshToken': refreshToken});
+  }
+
   // ─── Wallet ────────────────────────────────────────────────────────────────
 
   /// Fetches the current wallet balance.
@@ -151,6 +180,20 @@ class ApiClient {
     return res.data['data'] as List<dynamic>? ?? [];
   }
 
+  /// Initiates a wallet top-up and returns the provider client payload.
+  Future<Map<String, dynamic>> initiateTopup({
+    required double amount,
+    required String providerKey,
+    required String idempotencyKey,
+  }) async {
+    final res = await post(Endpoints.wallet.topup, data: {
+      'amount': amount,
+      'providerKey': providerKey,
+      'idempotencyKey': idempotencyKey,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
   // ─── Astrologers ───────────────────────────────────────────────────────────
 
   /// Fetches a paginated list of astrologers with optional filters.
@@ -160,7 +203,7 @@ class ApiClient {
     String? language,
     bool? isOnline,
     double? minRating,
-    int? maxPricePaise,
+    double? maxPrice,
     String? sort,
     int page = 1,
     int limit = 20,
@@ -171,7 +214,7 @@ class ApiClient {
       if (language != null) 'language': language,
       if (isOnline != null) 'isOnline': isOnline,
       if (minRating != null) 'minRating': minRating,
-      if (maxPricePaise != null) 'maxPricePaise': maxPricePaise,
+      if (maxPrice != null) 'maxPrice': maxPrice,
       if (sort != null) 'sort': sort,
       'page': page,
       'limit': limit,
@@ -242,6 +285,103 @@ class ApiClient {
         headers: {'Accept': 'text/event-stream'},
       ),
     );
+  }
+
+  // ─── Profile ───────────────────────────────────────────────────────────────
+
+  /// Fetches the current customer's full profile.
+  Future<Map<String, dynamic>> fetchProfile() async {
+    final res = await get(Endpoints.profile.get);
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Updates the current customer's profile fields.
+  Future<Map<String, dynamic>> updateProfile({
+    String? name,
+    String? email,
+    String? gender,
+    String? dob,
+    String? profileImageUrl,
+  }) async {
+    final res = await patch(Endpoints.profile.update, data: {
+      if (name != null) 'name': name,
+      if (email != null) 'email': email,
+      if (gender != null) 'gender': gender,
+      if (dob != null) 'dob': dob,
+      if (profileImageUrl != null) 'profileImageUrl': profileImageUrl,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  // ─── Horoscopes (public) ───────────────────────────────────────────────────
+
+  /// Fetches today's horoscope for [zodiacSign] (no auth required).
+  Future<Map<String, dynamic>?> fetchDailyHoroscope(String zodiacSign) async {
+    final res = await publicGet(Endpoints.public.todayHoroscope(zodiacSign));
+    final data = res.data['data'];
+    return data as Map<String, dynamic>?;
+  }
+
+  /// Fetches the weekly horoscope for [zodiacSign] (no auth required).
+  Future<Map<String, dynamic>?> fetchWeeklyHoroscope(String zodiacSign) async {
+    final res = await publicGet(Endpoints.public.weeklyHoroscope(zodiacSign));
+    final data = res.data['data'];
+    return data as Map<String, dynamic>?;
+  }
+
+  /// Fetches the monthly horoscope for [zodiacSign] (no auth required).
+  Future<Map<String, dynamic>?> fetchMonthlyHoroscope(String zodiacSign) async {
+    final res = await publicGet(Endpoints.public.monthlyHoroscope(zodiacSign));
+    final data = res.data['data'];
+    return data as Map<String, dynamic>?;
+  }
+
+  /// Fetches the yearly horoscope for [zodiacSign] (no auth required).
+  Future<Map<String, dynamic>?> fetchYearlyHoroscope(String zodiacSign) async {
+    try {
+      final res = await publicGet(Endpoints.public.yearlyHoroscope(zodiacSign));
+      final data = res.data['data'];
+      return data as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ─── Notifications ─────────────────────────────────────────────────────────
+
+  /// Fetches the paginated in-app notification list.
+  Future<List<dynamic>> fetchNotifications({int page = 1, int limit = 30}) async {
+    final res = await get(Endpoints.notifications.list,
+        queryParameters: {'page': page, 'limit': limit});
+    return res.data['data'] as List<dynamic>? ?? [];
+  }
+
+  /// Marks a single notification as read.
+  Future<void> markNotificationRead(String id) async {
+    await patch(Endpoints.notifications.markRead(id));
+  }
+
+  /// Marks all notifications as read.
+  Future<void> markAllNotificationsRead() async {
+    await post(Endpoints.notifications.markAllRead);
+  }
+
+  // ─── Consultations ─────────────────────────────────────────────────────────
+
+  /// Fetches the customer's consultation history.
+  Future<Map<String, dynamic>> fetchConsultations({
+    String? status,
+    String? type,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final res = await get(Endpoints.consultations.list, queryParameters: {
+      if (status != null) 'status': status,
+      if (type != null) 'type': type,
+      'page': page,
+      'limit': limit,
+    });
+    return res.data['data'] as Map<String, dynamic>;
   }
 
   // ─── Public API ────────────────────────────────────────────────────────────

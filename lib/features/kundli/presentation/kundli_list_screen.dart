@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/kundli_repository.dart';
 import '../domain/kundli_models.dart';
@@ -21,7 +22,7 @@ class KundliListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => context.push('/kundli/add').then(
+            onPressed: () => context.push(AppRoutes.kundliAdd).then(
                   (_) => ref.invalidate(kundliProfilesProvider),
                 ),
           ),
@@ -61,7 +62,7 @@ class KundliListScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => context.push('/kundli/add').then(
+                    onPressed: () => context.push(AppRoutes.kundliAdd).then(
                           (_) => ref.invalidate(kundliProfilesProvider),
                         ),
                     icon: const Icon(Icons.add),
@@ -84,7 +85,7 @@ class KundliListScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/kundli/add').then(
+        onPressed: () => context.push(AppRoutes.kundliAdd).then(
               (_) => ref.invalidate(kundliProfilesProvider),
             ),
         backgroundColor: AppColors.primary,
@@ -147,7 +148,7 @@ class _KundliCard extends ConsumerWidget {
               icon: const Icon(Icons.open_in_new,
                   color: AppColors.primary, size: 20),
               onPressed: () =>
-                  context.push('/kundli/${profile.id}/report'),
+                  context.push(AppRoutes.kundliReport(profile.id)),
               tooltip: 'View Report',
             ),
             IconButton(

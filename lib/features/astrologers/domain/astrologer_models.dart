@@ -6,8 +6,8 @@ class Astrologer {
   final List<String> specialties;
   final List<String> languages;
   final int experienceYears;
-  final int pricePerMinChatPaise;
-  final int pricePerMinCallPaise;
+  final double pricePerMinChat;
+  final double pricePerMinCall;
   final bool isOnline;
   final bool isBusy;
   final double ratingAvg;
@@ -22,8 +22,8 @@ class Astrologer {
     required this.specialties,
     required this.languages,
     required this.experienceYears,
-    required this.pricePerMinChatPaise,
-    required this.pricePerMinCallPaise,
+    required this.pricePerMinChat,
+    required this.pricePerMinCall,
     required this.isOnline,
     required this.isBusy,
     required this.ratingAvg,
@@ -45,8 +45,8 @@ class Astrologer {
                 .toList() ??
             [],
         experienceYears: (j['experienceYears'] as int?) ?? 0,
-        pricePerMinChatPaise: (j['pricePerMinChatPaise'] as int?) ?? 0,
-        pricePerMinCallPaise: (j['pricePerMinCallPaise'] as int?) ?? 0,
+        pricePerMinChat: (j['pricePerMinChat'] as num?)?.toDouble() ?? 0.0,
+        pricePerMinCall: (j['pricePerMinCall'] as num?)?.toDouble() ?? 0.0,
         isOnline: (j['isOnline'] as bool?) ?? false,
         isBusy: (j['isBusy'] as bool?) ?? false,
         ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,

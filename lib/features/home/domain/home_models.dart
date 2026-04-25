@@ -26,7 +26,7 @@ class TrendingAstrologer {
   final List<String> specialties;
   final double ratingAvg;
   final int ratingCount;
-  final int pricePerMinChatPaise;
+  final int pricePerMinChat;
   final bool isOnline;
 
   const TrendingAstrologer({
@@ -36,7 +36,7 @@ class TrendingAstrologer {
     required this.specialties,
     required this.ratingAvg,
     required this.ratingCount,
-    required this.pricePerMinChatPaise,
+    required this.pricePerMinChat,
     required this.isOnline,
   });
 
@@ -51,7 +51,7 @@ class TrendingAstrologer {
             [],
         ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
         ratingCount: (j['ratingCount'] as int?) ?? 0,
-        pricePerMinChatPaise: (j['pricePerMinChatPaise'] as int?) ?? 0,
+        pricePerMinChat: (j['pricePerMinChat'] as int?) ?? 0,
         isOnline: (j['isOnline'] as bool?) ?? false,
       );
 }
