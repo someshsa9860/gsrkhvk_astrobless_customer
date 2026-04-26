@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/format_utils.dart';
 import '../data/kundli_repository.dart';
@@ -18,7 +20,7 @@ class _KundliReportScreenState extends ConsumerState<KundliReportScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
 
-  static const _tabs = ['Basic', 'Charts', 'Dasha', 'Dosha', 'Ashtakvarga', 'Report'];
+  static const _tabs = ['Basic', 'Charts', 'Planets', 'Dasha', 'Dosha', 'Ashtakvarga', 'KP', 'Report'];
 
   @override
   void initState() {
@@ -76,27 +78,33 @@ class _KundliReportScreenState extends ConsumerState<KundliReportScreen>
         error: (e, _) => _ErrorView(
           onRetry: () => ref.invalidate(kundliReportProvider(widget.profileId)),
         ),
-        data: (report) => TabBarView(
-          controller: _tab,
-          children: [
-            _BasicTab(report: report, profile: profilesAsync.valueOrNull
-                ?.firstWhere((p) => p.id == widget.profileId,
-                    orElse: () => KundliProfile(
-                          id: widget.profileId,
-                          name: '',
-                          dateOfBirth: '',
-                          placeOfBirth: '',
-                          lat: 0,
-                          lng: 0,
-                          createdAt: DateTime.now(),
-                        ))),
-            _ChartsTab(report: report, profileId: widget.profileId),
-            _DashaTab(report: report, profileId: widget.profileId),
-            _DoshaTab(report: report),
-            _AshtakvargaTab(profileId: widget.profileId),
-            _ReportTab(report: report),
-          ],
-        ),
+        data: (report) {
+          final profile = profilesAsync.valueOrNull?.firstWhere(
+            (p) => p.id == widget.profileId,
+            orElse: () => KundliProfile(
+              id: widget.profileId,
+              name: '',
+              dateOfBirth: '',
+              placeOfBirth: '',
+              lat: 0,
+              lng: 0,
+              createdAt: DateTime.now(),
+            ),
+          );
+          return TabBarView(
+            controller: _tab,
+            children: [
+              _BasicTab(report: report, profile: profile),
+              _ChartsTab(report: report, profileId: widget.profileId),
+              _PlanetsTab(report: report),
+              _DashaTab(report: report, profileId: widget.profileId),
+              _DoshaTab(report: report),
+              _AshtakvargaTab(profileId: widget.profileId),
+              _KpTab(report: report),
+              _ReportTab(report: report),
+            ],
+          );
+        },
       ),
     );
   }
@@ -133,14 +141,14 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tt = Theme.of(context).textTheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.error_outline, color: c.error, size: 48),
           const SizedBox(height: 12),
-          Text('Failed to load report', style: tt.bodyMedium),
+          Text('Failed to load report',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
         ],
@@ -158,15 +166,10 @@ class _BasicTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = report.chartData;
-    final ascRaw = data['ascendant'];
-    final asc = ascRaw is Map ? Map<String, dynamic>.from(ascRaw) : null;
-    final mangalRaw = data['mangalDosha'];
-    final mangal = mangalRaw is Map ? Map<String, dynamic>.from(mangalRaw) : null;
-    final panchangRaw = data['panchangDetails'];
-    final panchang = panchangRaw is Map ? Map<String, dynamic>.from(panchangRaw) : null;
-    final avakhadaRaw = data['avakhadaDetails'];
-    final avakhada = avakhadaRaw is Map ? Map<String, dynamic>.from(avakhadaRaw) : null;
+    final asc = report.ascendant;
+    final panchang = report.panchang;
+    final avakhada = report.avakhada;
+    final mangal = report.mangalDosha;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -178,25 +181,47 @@ class _BasicTab extends StatelessWidget {
         if (panchang != null) ...[
           _SectionHeader('Panchang Details'),
           const SizedBox(height: 8),
-          _PanchangCard(panchang: panchang),
+          _InfoCard(rows: [
+            _Row('Tithi', panchang.tithi),
+            _Row('Karan', panchang.karan),
+            _Row('Yog', panchang.yog),
+            _Row('Nakshatra', panchang.nakshatra),
+            _Row('Day', panchang.vara),
+            _Row('Sunrise', panchang.sunrise),
+            _Row('Sunset', panchang.sunset),
+            if (panchang.ayanamsa.isNotEmpty) _Row('Ayanamsa', panchang.ayanamsa),
+            if (panchang.julian.isNotEmpty) _Row('Julian Day', panchang.julian),
+          ].where((r) => r.value.isNotEmpty).toList()),
           const SizedBox(height: 20),
         ],
         if (avakhada != null) ...[
           _SectionHeader('Avakhada Details'),
           const SizedBox(height: 8),
-          _AvakhadaCard(avakhada: avakhada),
+          _InfoCard(rows: [
+            _Row('Varna', avakhada.varna),
+            _Row('Vashya', avakhada.vashya),
+            _Row('Yoni', avakhada.yoni),
+            _Row('Gan', avakhada.gan),
+            _Row('Nadi', avakhada.nadi),
+            _Row('Moon Sign', avakhada.moonRashi),
+            _Row('Moon Nakshatra', avakhada.moonNakshatra),
+            _Row('Moon Nak. Lord', avakhada.moonNakshatraLord),
+            _Row('Sun Sign', avakhada.sunSign),
+            _Row('Lucky', avakhada.lucky),
+          ].where((r) => r.value.isNotEmpty).toList()),
           const SizedBox(height: 20),
         ],
         if (asc != null) ...[
           _SectionHeader('Ascendant Details'),
           const SizedBox(height: 8),
           _InfoCard(rows: [
-            _Row('Ascendant', asc['sign']?.toString() ?? '—'),
-            _Row('Sign Lord', asc['signLord']?.toString() ?? '—'),
-            _Row('Nakshatra', asc['nakshatra']?.toString() ?? '—'),
-            _Row('Nakshatra Lord', asc['nakshatraLord']?.toString() ?? '—'),
-            _Row('Pada', asc['nakshatraPada']?.toString() ?? '—'),
-          ]),
+            _Row('Ascendant', asc.sign),
+            _Row('Sign Lord', asc.signLord),
+            _Row('Degree', "${asc.degree.toStringAsFixed(2)}°"),
+            _Row('Nakshatra', asc.nakshatra),
+            _Row('Nakshatra Lord', asc.nakshatraLord),
+            _Row('Pada', asc.nakshatraPada.toString()),
+          ].where((r) => r.value.isNotEmpty && r.value != '0').toList()),
           const SizedBox(height: 20),
         ],
         if (mangal != null) ...[
@@ -214,7 +239,7 @@ class _BasicTab extends StatelessWidget {
 class _KundliInfoTable extends StatelessWidget {
   const _KundliInfoTable({required this.profile, this.asc});
   final KundliProfile profile;
-  final Map<String, dynamic>? asc;
+  final AscendantData? asc;
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +258,8 @@ class _KundliInfoTable extends StatelessWidget {
           _Row('Longitude', profile.lng.toStringAsFixed(4)),
           _Row('Timezone', 'GMT+5:30 (IST)'),
           if (asc != null) ...[
-            _Row('Ascendant', asc!['sign']?.toString() ?? '—'),
-            _Row('Nakshatra', asc!['nakshatra']?.toString() ?? '—'),
+            _Row('Ascendant', asc!.sign),
+            _Row('Nakshatra', asc!.nakshatra),
           ],
         ]),
       ],
@@ -271,147 +296,91 @@ class _KundliInfoTable extends StatelessWidget {
 
 class _ManglikCard extends StatelessWidget {
   const _ManglikCard({required this.mangal});
-  final Map<String, dynamic> mangal;
+  final MangalDosha mangal;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    final isManglik = mangal['isManglik'] as bool? ?? false;
-    final desc = mangal['description']?.toString() ?? '';
 
     return Container(
       decoration: BoxDecoration(
         color: c.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isManglik ? c.error.withAlpha(80) : c.border),
+        border: Border.all(color: mangal.isManglik ? c.error.withAlpha(80) : c.border),
       ),
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: isManglik ? c.error : c.success,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                isManglik ? 'Yes' : 'No',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: mangal.isManglik ? c.error : c.success,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  mangal.isManglik ? 'Manglik' : 'Non-Manglik',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Manglik',
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(desc,
-                      style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-                ],
+              if (mangal.manglikPct > 0) ...[
+                const SizedBox(width: 8),
+                Text('${mangal.manglikPct.toStringAsFixed(0)}%',
+                    style: tt.bodySmall?.copyWith(color: c.textSecondary)),
               ],
-            ),
+            ],
           ),
+          if (mangal.description.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(mangal.description,
+                style: tt.bodySmall?.copyWith(color: c.textSecondary, height: 1.5)),
+          ],
+          if (mangal.remedies.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text('Remedies', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            ...mangal.remedies.map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('• ', style: TextStyle(color: c.primary, fontSize: 14)),
+                      Expanded(child: Text(r, style: tt.bodySmall?.copyWith(color: c.textSecondary))),
+                    ],
+                  ),
+                )),
+          ],
         ],
       ),
     );
   }
 }
 
-class _PanchangCard extends StatelessWidget {
-  const _PanchangCard({required this.panchang});
-  final Map<String, dynamic> panchang;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <_Row>[];
-    // VedicAstro panchang-details field names
-    final fields = <String, String>{
-      'Tithi': _str(panchang, ['tithi', 'tithi_name']),
-      'Karan': _str(panchang, ['karan', 'karana', 'karna']),
-      'Yog': _str(panchang, ['yog', 'yoga', 'yog_name']),
-      'Nakshatra': _str(panchang, ['nakshatra', 'nakshatra_name']),
-      'Sunrise': _str(panchang, ['sunrise', 'sun_rise']),
-      'Sunset': _str(panchang, ['sunset', 'sun_set']),
-      'Day': _str(panchang, ['day', 'vaara', 'weekday']),
-    };
-    for (final e in fields.entries) {
-      if (e.value.isNotEmpty) rows.add(_Row(e.key, e.value));
-    }
-    if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(rows: rows);
-  }
-
-  static String _str(Map<String, dynamic> m, List<String> keys) {
-    for (final k in keys) {
-      final v = m[k];
-      if (v != null && v.toString().isNotEmpty) return v.toString();
-    }
-    return '';
-  }
-}
-
-class _AvakhadaCard extends StatelessWidget {
-  const _AvakhadaCard({required this.avakhada});
-  final Map<String, dynamic> avakhada;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <_Row>[];
-    final fields = <String, String>{
-      'Varna': _str(avakhada, ['varna']),
-      'Vashya': _str(avakhada, ['vashya']),
-      'Yoni': _str(avakhada, ['yoni']),
-      'Gan': _str(avakhada, ['gan', 'gana']),
-      'Nadi': _str(avakhada, ['nadi']),
-      'Sign': _str(avakhada, ['sign', 'zodiac']),
-      'Sign Lord': _str(avakhada, ['sign_lord', 'signLord']),
-      'Nakshatra': _str(avakhada, ['nakshatra', 'nakshatra_name']),
-      'Nakshatra-Charan': _str(avakhada, ['nakshatra_pada', 'nakshatraPada', 'charan']),
-    };
-    for (final e in fields.entries) {
-      if (e.value.isNotEmpty) rows.add(_Row(e.key, e.value));
-    }
-    if (rows.isEmpty) return const SizedBox.shrink();
-    return _InfoCard(rows: rows);
-  }
-
-  static String _str(Map<String, dynamic> m, List<String> keys) {
-    for (final k in keys) {
-      final v = m[k];
-      if (v != null && v.toString().isNotEmpty) return v.toString();
-    }
-    return '';
-  }
-}
-
 // ─── Tab: Charts ─────────────────────────────────────────────────────────────
 
-// Short → full planet name
-const _planetFullNames = {
-  'As': 'Asc', 'Asc': 'Asc',
-  'Su': 'Sun', 'Mo': 'Moon', 'Ma': 'Mars', 'Me': 'Mer',
-  'Ju': 'Jup', 'Ve': 'Ven', 'Sa': 'Sat',
-  'Ra': 'Rahu', 'Ke': 'Ketu',
-  'Ur': 'Ura', 'Ne': 'Nep', 'Pl': 'Plu',
-};
+// Divisional chart options shown in the selector
+const _divisionalCharts = [
+  ('D1', 'Lagna'),
+  ('D2', 'Hora'),
+  ('D3', 'Drekkana'),
+  ('D4', 'Chaturthamsa'),
+  ('D7', 'Saptamsa'),
+  ('D9', 'Navamsa'),
+  ('D10', 'Dashamsa'),
+  ('D12', 'Dwadasamsa'),
+  ('D16', 'Shodasamsa'),
+  ('D20', 'Vimshamsa'),
+  ('D24', 'Chaturvimshamsa'),
+  ('D27', 'Bhamsa'),
+  ('D30', 'Trimshamsa'),
+  ('D40', 'Khavedamsa'),
+  ('D45', 'Akshavedamsa'),
+  ('D60', 'Shashtiamsa'),
+];
 
-String _expandPlanetName(String name) => _planetFullNames[name] ?? name;
-
-// Chart sub-tab labels
-const _chartSubTabs = ['Lagna', 'Navamsa', 'Transit', 'Divisional'];
-
-// Understanding Your Kundli content (localized via ARB)
 const _understandingCategories = ['General', 'Planetary', 'Yoga'];
 
 const _understandingContent = {
@@ -487,220 +456,72 @@ class _ChartsTab extends ConsumerStatefulWidget {
 }
 
 class _ChartsTabState extends ConsumerState<_ChartsTab> {
-  int _subTab = 0;       // 0=Lagna 1=Navamsa 2=Transit 3=Divisional
-  int _styleIdx = 0;     // 0=North 1=South
+  int _styleIdx = 0;
   int _understandingCat = 0;
-
-  List<Map<String, dynamic>> _planetsFromDivisional(Map<String, dynamic> data) {
-    final planets = <Map<String, dynamic>>[];
-    data.forEach((name, val) {
-      if (val is Map) {
-        final m = Map<String, dynamic>.from(val);
-        final house = (m['house'] as num?)?.toInt() ?? 0;
-        if (house > 0) {
-          planets.add({
-            'name': name,
-            'sign': m['zodiac']?.toString() ?? '',
-            'signLord': m['lord']?.toString() ?? '',
-            'house': house,
-            'normDegree': m['degree'] ?? 0,
-            'isRetro': m['isRetro'] ?? false,
-          });
-        }
-      }
-    });
-    return planets;
-  }
+  // Which divisional chart is selected (index into _divisionalCharts)
+  int _divIdx = 0;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    final data = widget.report.chartData;
+    final report = widget.report;
 
-    // Lagna planets from cached report
-    final rawPlanets = data['planets'];
-    final List<Map<String, dynamic>> lagnaPlanetMaps = rawPlanets is List
-        ? rawPlanets
-            .whereType<Map<dynamic, dynamic>>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .where((p) => (p['name']?.toString() ?? '').isNotEmpty &&
-                          ((p['house'] as num?)?.toInt() ?? 0) > 0)
-            .toList()
-        : [];
-
-    final ascRaw = data['ascendant'];
-    final asc = ascRaw is Map ? Map<String, dynamic>.from(ascRaw) : null;
-    final ascSign = asc?['sign']?.toString() ?? '';
-
-    List<ChartPlanet> toChartPlanets(List<Map<String, dynamic>> maps) =>
-        maps.map((p) => ChartPlanet(
-          shortName: p['name']?.toString() ?? '',
-          house: (p['house'] as num?)?.toInt() ?? 1,
-          isRetro: p['isRetro'] as bool? ?? false,
-        )).toList();
-
-    // Navamsa (D9) from divisional API
-    final navamsaAsync = _subTab == 1
-        ? ref.watch(kundliDivisionalChartProvider((widget.profileId, 'D9')))
-        : null;
+    final (divKey, divLabel) = _divisionalCharts[_divIdx];
+    final cachedSvgUrl = report.chartSvgUrls[divKey];
 
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        _ChartSubTabBar(
-          tabs: _chartSubTabs,
-          selected: _subTab,
-          onTap: (i) => setState(() => _subTab = i),
+        // Divisional chart selector
+        _HorizontalChipBar(
+          chips: _divisionalCharts.map((e) => e.$1).toList(),
+          selected: _divIdx,
+          onTap: (i) => setState(() => _divIdx = i),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_subTab == 0) ...[
-                // ── Lagna (D1) — from cached report ──
-                _ChartStyleToggle(
-                  styleIdx: _styleIdx,
-                  onChanged: (i) => setState(() => _styleIdx = i),
-                ),
-                const SizedBox(height: 12),
-                _ChartCanvas(
-                  planets: toChartPlanets(lagnaPlanetMaps),
-                  ascSign: ascSign,
-                  styleIdx: _styleIdx,
-                ),
-                const SizedBox(height: 20),
-                _SectionHeader('Planets'),
-                const SizedBox(height: 8),
-                if (lagnaPlanetMaps.isNotEmpty)
-                  _PlanetsTable(planets: lagnaPlanetMaps, ascendant: asc)
-                else
-                  Text('No planetary data available.',
-                      style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-              ] else if (_subTab == 1) ...[
-                // ── Navamsa (D9) — live from divisional API ──
-                _ChartStyleToggle(
-                  styleIdx: _styleIdx,
-                  onChanged: (i) => setState(() => _styleIdx = i),
-                ),
-                const SizedBox(height: 12),
-                if (navamsaAsync == null)
-                  const SizedBox.shrink()
-                else
-                  navamsaAsync.when(
-                    loading: () => Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 32),
-                        child: CircularProgressIndicator(color: c.primary),
-                      ),
+              // Chart label + style toggle
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '$divKey — $divLabel',
+                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  if (cachedSvgUrl == null)
+                    _ChartStyleToggle(
+                      styleIdx: _styleIdx,
+                      onChanged: (i) => setState(() => _styleIdx = i),
                     ),
-                    error: (e, _) => Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.error_outline, color: c.error, size: 36),
-                          const SizedBox(height: 8),
-                          Text('Failed to load Navamsa chart',
-                              style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-                          const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: () => ref.invalidate(
-                                kundliDivisionalChartProvider((widget.profileId, 'D9'))),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    data: (divData) {
-                      final rawDiv = divData['planets'];
-                      final divPlanets = rawDiv is Map
-                          ? _planetsFromDivisional(Map<String, dynamic>.from(rawDiv))
-                          : _planetsFromDivisional(divData);
-                      final divAscSign = divData['ascendant']?.toString() ?? ascSign;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _ChartCanvas(
-                            planets: toChartPlanets(divPlanets),
-                            ascSign: divAscSign,
-                            styleIdx: _styleIdx,
-                          ),
-                          const SizedBox(height: 20),
-                          _SectionHeader('Navamsa Planets (D9)'),
-                          const SizedBox(height: 8),
-                          if (divPlanets.isNotEmpty)
-                            _PlanetsTable(planets: divPlanets, ascendant: null)
-                          else
-                            Text('No Navamsa data available.',
-                                style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-                        ],
-                      );
-                    },
-                  ),
-              ] else ...[
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 24),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: c.card,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: c.border),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.hourglass_top_rounded,
-                          color: c.primary.withAlpha(120), size: 40),
-                      const SizedBox(height: 12),
-                      Text(
-                        _subTab == 2 ? 'Transit Chart' : 'Divisional Charts',
-                        style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Coming soon in the next update.',
-                        style: tt.bodySmall?.copyWith(color: c.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
+              const SizedBox(height: 12),
 
-              // ── Understanding Your Kundli ──
-              const SizedBox(height: 24),
+              // Chart display: SVG from storage if available, else painter
+              if (cachedSvgUrl != null)
+                _SvgChartCard(url: cachedSvgUrl, label: divLabel)
+              else
+                _LiveDivisionalChart(
+                  report: report,
+                  profileId: widget.profileId,
+                  div: divKey,
+                  styleIdx: _styleIdx,
+                  onStyleChanged: (i) => setState(() => _styleIdx = i),
+                  ref: ref,
+                ),
+
+              // Understanding Your Kundli
+              const SizedBox(height: 28),
               Text('Understanding Your Kundli',
                   style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: List.generate(_understandingCategories.length, (i) {
-                    final selected = _understandingCat == i;
-                    return Padding(
-                      padding: EdgeInsets.only(right: i < _understandingCategories.length - 1 ? 8 : 0),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _understandingCat = i),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: selected ? c.primary : Colors.transparent,
-                            border: Border.all(color: selected ? c.primary : c.border),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _understandingCategories[i],
-                            style: tt.labelMedium?.copyWith(
-                              color: selected ? Colors.white : c.textSecondary,
-                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
+              _HorizontalChipBar(
+                chips: _understandingCategories,
+                selected: _understandingCat,
+                onTap: (i) => setState(() => _understandingCat = i),
               ),
               const SizedBox(height: 14),
               ...(_understandingContent[_understandingCategories[_understandingCat]] ?? [])
@@ -710,6 +531,186 @@ class _ChartsTabState extends ConsumerState<_ChartsTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SvgChartCard extends StatelessWidget {
+  const _SvgChartCard({required this.url, required this.label});
+  final String url;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    final isSvg = url.toLowerCase().endsWith('.svg') || url.contains('/svg');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.border),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: isSvg
+          ? SvgPicture.network(
+              url,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              placeholderBuilder: (_) => SizedBox(
+                height: 280,
+                child: Center(child: CircularProgressIndicator(color: c.primary, strokeWidth: 2)),
+              ),
+            )
+          : CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              placeholder: (_, __) => SizedBox(
+                height: 280,
+                child: Center(child: CircularProgressIndicator(color: c.primary, strokeWidth: 2)),
+              ),
+              errorWidget: (_, __, ___) => _ChartUnavailable(label: label, c: c, tt: tt),
+            ),
+    );
+  }
+}
+
+class _ChartUnavailable extends StatelessWidget {
+  const _ChartUnavailable({required this.label, required this.c, required this.tt});
+  final String label;
+  final AppThemeColors c;
+  final TextTheme tt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        children: [
+          Icon(Icons.broken_image_outlined, color: c.textSecondary, size: 32),
+          const SizedBox(height: 8),
+          Text('$label chart unavailable', style: tt.labelSmall?.copyWith(color: c.textSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveDivisionalChart extends ConsumerWidget {
+  const _LiveDivisionalChart({
+    required this.report,
+    required this.profileId,
+    required this.div,
+    required this.styleIdx,
+    required this.onStyleChanged,
+    required this.ref,
+  });
+  final KundliReport report;
+  final String profileId;
+  final String div;
+  final int styleIdx;
+  final ValueChanged<int> onStyleChanged;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context, WidgetRef widgetRef) {
+    final c = context.colors;
+    final asc = report.ascendant;
+
+    // D1 uses cached report planets
+    if (div == 'D1') {
+      final planets = report.planets
+          .where((p) => p.house > 0)
+          .map((p) => ChartPlanet(
+                shortName: p.name.length > 2 ? p.name.substring(0, 2) : p.name,
+                house: p.house,
+                isRetro: p.isRetro,
+              ))
+          .toList();
+      return _ChartCanvas(
+        planets: planets,
+        ascSign: asc?.sign ?? '',
+        styleIdx: styleIdx,
+      );
+    }
+
+    // Other divisional charts — fetch live
+    final divAsync = widgetRef.watch(kundliDivisionalChartProvider((profileId, div)));
+    return divAsync.when(
+      loading: () => SizedBox(
+        height: 280,
+        child: Center(child: CircularProgressIndicator(color: c.primary)),
+      ),
+      error: (e, _) => _DivChartError(
+        onRetry: () => widgetRef.invalidate(kundliDivisionalChartProvider((profileId, div))),
+      ),
+      data: (data) {
+        final planetsRaw = data['planets'];
+        final List<Map<String, dynamic>> planetMaps;
+        if (planetsRaw is List) {
+          planetMaps = planetsRaw.whereType<Map<dynamic, dynamic>>()
+              .map((e) => Map<String, dynamic>.from(e)).toList();
+        } else if (planetsRaw is Map) {
+          planetMaps = [];
+          planetsRaw.forEach((name, val) {
+            if (val is Map) {
+              final m = Map<String, dynamic>.from(val);
+              final house = (m['house'] as num?)?.toInt() ?? 0;
+              if (house > 0) planetMaps.add({'name': name, 'house': house, 'isRetro': m['isRetro'] ?? false, ...m});
+            }
+          });
+        } else {
+          planetMaps = [];
+        }
+
+        final divAscSign = data['ascendant']?.toString() ?? asc?.sign ?? '';
+        final chartPlanets = planetMaps
+            .map((p) => ChartPlanet(
+                  shortName: (p['name']?.toString() ?? '').length > 2
+                      ? p['name'].toString().substring(0, 2)
+                      : p['name']?.toString() ?? '',
+                  house: (p['house'] as num?)?.toInt() ?? 1,
+                  isRetro: p['isRetro'] as bool? ?? false,
+                ))
+            .toList();
+
+        return _ChartCanvas(
+          planets: chartPlanets,
+          ascSign: divAscSign,
+          styleIdx: styleIdx,
+        );
+      },
+    );
+  }
+}
+
+class _DivChartError extends StatelessWidget {
+  const _DivChartError({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.border),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: c.error, size: 36),
+          const SizedBox(height: 8),
+          Text('Failed to load chart',
+              style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
     );
   }
 }
@@ -728,38 +729,36 @@ class _ChartCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    return Center(
-      child: Container(
-        decoration: BoxDecoration(
-          color: c.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.border),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: ascSign.isNotEmpty
-            ? KundliChartWidget(
-                planets: planets,
-                ascSign: ascSign,
-                style: styleIdx == 0 ? KundliChartStyle.north : KundliChartStyle.south,
-                size: MediaQuery.of(context).size.width - 80,
-              )
-            : Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text('Chart data unavailable',
-                    style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.border),
       ),
+      padding: const EdgeInsets.all(12),
+      child: ascSign.isNotEmpty
+          ? KundliChartWidget(
+              planets: planets,
+              ascSign: ascSign,
+              style: styleIdx == 0 ? KundliChartStyle.north : KundliChartStyle.south,
+              size: MediaQuery.of(context).size.width - 80,
+            )
+          : Padding(
+              padding: const EdgeInsets.all(32),
+              child: Text('Chart data unavailable',
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+            ),
     );
   }
 }
 
-class _ChartSubTabBar extends StatelessWidget {
-  const _ChartSubTabBar({
-    required this.tabs,
+class _HorizontalChipBar extends StatelessWidget {
+  const _HorizontalChipBar({
+    required this.chips,
     required this.selected,
     required this.onTap,
   });
-  final List<String> tabs;
+  final List<String> chips;
   final int selected;
   final ValueChanged<int> onTap;
 
@@ -768,31 +767,28 @@ class _ChartSubTabBar extends StatelessWidget {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
     return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.border)),
-      ),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.border))),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Row(
-          children: List.generate(tabs.length, (i) {
+          children: List.generate(chips.length, (i) {
             final sel = selected == i;
             return GestureDetector(
               onTap: () => onTap(i),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: sel ? c.primary : Colors.transparent,
-                      width: 2.5,
-                    ),
-                  ),
+                  color: sel ? c.primary : Colors.transparent,
+                  border: Border.all(color: sel ? c.primary : c.border),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  tabs[i],
-                  style: tt.labelMedium?.copyWith(
-                    color: sel ? c.primary : c.textSecondary,
+                  chips[i],
+                  style: tt.labelSmall?.copyWith(
+                    color: sel ? Colors.white : c.textSecondary,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
@@ -815,7 +811,7 @@ class _ChartStyleToggle extends StatelessWidget {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text('Style: ', style: tt.labelSmall?.copyWith(color: c.textSecondary)),
         Container(
@@ -893,10 +889,7 @@ class _KundliInfoCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             section.body,
-            style: tt.bodySmall?.copyWith(
-              color: c.textSecondary,
-              height: 1.6,
-            ),
+            style: tt.bodySmall?.copyWith(color: c.textSecondary, height: 1.6),
             textAlign: TextAlign.justify,
           ),
         ],
@@ -905,35 +898,65 @@ class _KundliInfoCard extends StatelessWidget {
   }
 }
 
-class _PlanetsTable extends StatelessWidget {
-  const _PlanetsTable({required this.planets, this.ascendant});
-  final List<Map<String, dynamic>> planets;
-  final Map<String, dynamic>? ascendant;
+// ─── Tab: Planets ─────────────────────────────────────────────────────────────
+
+class _PlanetsTab extends StatelessWidget {
+  const _PlanetsTab({required this.report});
+  final KundliReport report;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
+    final planets = report.planets;
+    final asc = report.ascendant;
 
-    // Build rows: ascendant first, then planets
-    final rows = <Map<String, dynamic>>[];
-    if (ascendant != null) {
-      rows.add({
-        'name': 'Ascendant',
-        'sign': ascendant!['sign'] ?? '—',
-        'signLord': ascendant!['signLord'] ?? '—',
-        'normDegree': ascendant!['degree'] ?? 0,
-        'house': 1,
-        'nakshatra': ascendant!['nakshatra'] ?? '—',
-        'isRetro': false,
-      });
-    }
-    rows.addAll(planets);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionHeader('Planetary Positions'),
+        const SizedBox(height: 4),
+        Text('Birth chart planetary placement with nakshatra details.',
+            style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+        const SizedBox(height: 12),
 
-    final headerStyle = tt.labelSmall?.copyWith(
-      fontWeight: FontWeight.w700,
-      color: c.textPrimary,
+        if (asc != null) ...[
+          // Ascendant row card
+          _InfoCard(rows: [
+            _Row('Ascendant', asc.sign),
+            _Row('Degree', "${asc.degree.toStringAsFixed(2)}°"),
+            _Row('Nakshatra', '${asc.nakshatra} (${asc.nakshatraLord}) — Pada ${asc.nakshatraPada}'),
+          ]),
+          const SizedBox(height: 16),
+        ],
+
+        // Full planets table
+        if (planets.isNotEmpty)
+          _FullPlanetsTable(planets: planets)
+        else
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Text('No planetary data available.',
+                  style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
+            ),
+          ),
+
+        const SizedBox(height: 24),
+      ],
     );
+  }
+}
+
+class _FullPlanetsTable extends StatelessWidget {
+  const _FullPlanetsTable({required this.planets});
+  final List<PlanetData> planets;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    final headerStyle = tt.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: c.textPrimary);
 
     return Container(
       decoration: BoxDecoration(
@@ -944,99 +967,73 @@ class _PlanetsTable extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          // fixed row width: 100+90+80+70+50 columns + 24px horizontal padding
-          width: (MediaQuery.of(context).size.width - 32).clamp(414.0, double.infinity),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header row
+              // Header
               Container(
-                width: double.infinity,
                 color: c.primary.withAlpha(25),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
                   children: [
-                    SizedBox(width: 100, child: Text('Planet', style: headerStyle)),
-                    SizedBox(width: 90, child: Text('Sign', style: headerStyle)),
-                    SizedBox(width: 80, child: Text('Sign Lord', style: headerStyle)),
-                    SizedBox(width: 70, child: Text('Degree', style: headerStyle)),
-                    SizedBox(width: 50, child: Text('House', style: headerStyle)),
+                    SizedBox(width: 88, child: Text('Planet', style: headerStyle)),
+                    SizedBox(width: 80, child: Text('Sign', style: headerStyle)),
+                    SizedBox(width: 60, child: Text('Degree', style: headerStyle)),
+                    SizedBox(width: 44, child: Text('House', style: headerStyle)),
+                    SizedBox(width: 100, child: Text('Nakshatra', style: headerStyle)),
+                    SizedBox(width: 80, child: Text('Nak. Lord', style: headerStyle)),
+                    SizedBox(width: 40, child: Text('Pada', style: headerStyle)),
                   ],
                 ),
               ),
-              // Data rows
-              ...rows.asMap().entries.map((entry) {
+              // Rows
+              ...planets.asMap().entries.map((entry) {
                 final i = entry.key;
                 final p = entry.value;
-                final isRetro = p['isRetro'] as bool? ?? false;
-                final rawDeg = p['normDegree'] ?? p['degree'] ?? 0;
-                final deg = (rawDeg as num).toDouble();
-                final degStr = '${deg.toStringAsFixed(1)}°';
-                final name = _expandPlanetName(p['name']?.toString() ?? '—');
-                final isAsc = name == 'Ascendant';
-
                 return Container(
-                  width: double.infinity,
                   decoration: BoxDecoration(
-                    color: isAsc
-                        ? c.accent.withAlpha(18)
-                        : i.isEven
-                            ? Colors.transparent
-                            : c.surface.withAlpha(35),
+                    color: i.isEven ? Colors.transparent : c.surface.withAlpha(30),
                     border: Border(top: BorderSide(color: c.border, width: 0.5)),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 100,
-                        child: Row(children: [
-                          Text(
-                            name,
-                            style: tt.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isAsc ? c.accent : c.textPrimary,
-                            ),
-                          ),
-                          if (isRetro) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: c.error.withAlpha(25),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text('R',
-                                  style: TextStyle(
-                                      color: c.error,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700)),
-                            ),
+                        width: 88,
+                        child: Row(
+                          children: [
+                            Text(p.name,
+                                style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                            if (p.isRetro) ...[
+                              const SizedBox(width: 4),
+                              _RetroTag(c: c),
+                            ],
                           ],
-                        ]),
+                        ),
                       ),
+                      SizedBox(width: 80, child: Text(p.sign, style: tt.bodySmall)),
                       SizedBox(
-                        width: 90,
-                        child: Text(p['sign']?.toString() ?? '—',
-                            style: tt.bodySmall),
-                      ),
-                      SizedBox(
-                        width: 80,
-                        child: Text(p['signLord']?.toString() ?? '—',
-                            style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-                      ),
-                      SizedBox(
-                        width: 70,
-                        child: Text(degStr,
+                        width: 60,
+                        child: Text(p.degreeStr,
                             style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                       ),
                       SizedBox(
-                        width: 50,
-                        child: Text(
-                          p['house']?.toString() ?? '—',
-                          style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                        ),
+                        width: 44,
+                        child: Text(p.house.toString(),
+                            style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                      ),
+                      SizedBox(width: 100, child: Text(p.nakshatra, style: tt.bodySmall)),
+                      SizedBox(
+                        width: 80,
+                        child: Text(p.nakshatraLord,
+                            style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+                      ),
+                      SizedBox(
+                        width: 40,
+                        child: Text(p.nakshatraPada.toString(),
+                            style: tt.bodySmall?.copyWith(color: c.textSecondary)),
                       ),
                     ],
                   ),
@@ -1046,6 +1043,23 @@ class _PlanetsTable extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RetroTag extends StatelessWidget {
+  const _RetroTag({required this.c});
+  final AppThemeColors c;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: c.error.withAlpha(25),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text('R', style: TextStyle(color: c.error, fontSize: 9, fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -1064,18 +1078,6 @@ String _fmtDashaDate(String raw) {
   }
 }
 
-// Returns true if the period [start, end] contains today
-bool _isCurrentPeriod(String start, String end) {
-  try {
-    final now = DateTime.now();
-    final s = DateTime.parse(start);
-    final e = DateTime.parse(end);
-    return now.isAfter(s) && now.isBefore(e);
-  } catch (_) {
-    return false;
-  }
-}
-
 class _DashaTab extends ConsumerStatefulWidget {
   const _DashaTab({required this.profileId, required this.report});
   final String profileId;
@@ -1086,9 +1088,7 @@ class _DashaTab extends ConsumerStatefulWidget {
 }
 
 class _DashaTabState extends ConsumerState<_DashaTab> {
-  // Drill-down state: null = mahadasha list; set = viewing antars of that maha planet
   String? _selectedMaha;
-  // Antar selection for sub-dasha drill-down
   String? _selectedAntar;
 
   @override
@@ -1096,24 +1096,38 @@ class _DashaTabState extends ConsumerState<_DashaTab> {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
     final dashaAsync = ref.watch(kundliFullDashaProvider(widget.profileId));
-    final currentDasha = widget.report.chartData['currentDasha'];
-    final currentDashaMap = currentDasha is Map ? Map<String, dynamic>.from(currentDasha) : null;
+    final currentDasha = widget.report.currentDasha;
+
+    // If dasha already available in report, prefer it
+    final builtInDasha = widget.report.dasha;
 
     return dashaAsync.when(
-      loading: () => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 48),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: c.primary),
-              const SizedBox(height: 12),
-              Text('Loading dasha data…',
-                  style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-            ],
-          ),
-        ),
-      ),
+      loading: () => builtInDasha.isNotEmpty
+          ? _DashaList(
+              periods: builtInDasha,
+              currentDasha: currentDasha,
+              selectedMaha: _selectedMaha,
+              selectedAntar: _selectedAntar,
+              profileId: widget.profileId,
+              onSelectMaha: (p) => setState(() { _selectedMaha = p; _selectedAntar = null; }),
+              onSelectAntar: (p) => setState(() => _selectedAntar = p),
+              onBackMaha: () => setState(() => _selectedMaha = null),
+              onBackAntar: () => setState(() => _selectedAntar = null),
+            )
+          : Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: c.primary),
+                    const SizedBox(height: 12),
+                    Text('Loading dasha data…',
+                        style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
       error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1129,153 +1143,183 @@ class _DashaTabState extends ConsumerState<_DashaTab> {
           ],
         ),
       ),
-      data: (dashaList) {
-        final periods = dashaList
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+      data: (rawList) {
+        final periods = rawList.isNotEmpty
+            ? rawList
+                .whereType<Map>()
+                .map((e) => MahaDasha.fromJson(Map<String, dynamic>.from(e)))
+                .toList()
+            : builtInDasha;
 
-        if (_selectedMaha != null) {
-          final maha = periods.firstWhere(
-            (p) => p['planet'] == _selectedMaha,
-            orElse: () => {},
-          );
-          if (maha.isEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) setState(() => _selectedMaha = null);
-            });
-            return const SizedBox.shrink();
-          }
+        return _DashaList(
+          periods: periods,
+          currentDasha: currentDasha,
+          selectedMaha: _selectedMaha,
+          selectedAntar: _selectedAntar,
+          profileId: widget.profileId,
+          onSelectMaha: (p) => setState(() { _selectedMaha = p; _selectedAntar = null; }),
+          onSelectAntar: (p) => setState(() => _selectedAntar = p),
+          onBackMaha: () => setState(() => _selectedMaha = null),
+          onBackAntar: () => setState(() => _selectedAntar = null),
+        );
+      },
+    );
+  }
+}
 
-          final antars = (maha['antars'] as List?)
-              ?.whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList() ?? [];
+class _DashaList extends ConsumerWidget {
+  const _DashaList({
+    required this.periods,
+    required this.currentDasha,
+    required this.selectedMaha,
+    required this.selectedAntar,
+    required this.profileId,
+    required this.onSelectMaha,
+    required this.onSelectAntar,
+    required this.onBackMaha,
+    required this.onBackAntar,
+  });
 
-          if (_selectedAntar != null) {
-            return _SubDashaView(
-              profileId: widget.profileId,
-              md: _selectedMaha!,
-              ad: _selectedAntar!,
-              onBack: () => setState(() => _selectedAntar = null),
-            );
-          }
+  final List<MahaDasha> periods;
+  final Map<String, dynamic>? currentDasha;
+  final String? selectedMaha;
+  final String? selectedAntar;
+  final String profileId;
+  final ValueChanged<String> onSelectMaha;
+  final ValueChanged<String> onSelectAntar;
+  final VoidCallback onBackMaha;
+  final VoidCallback onBackAntar;
 
-          return _AntarDashaView(
-            maha: maha,
-            antars: antars,
-            onBack: () => setState(() => _selectedMaha = null),
-            onSelectAntar: (planet) => setState(() => _selectedAntar = planet),
-          );
-        }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
 
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (currentDashaMap != null) ...[
-              _SectionHeader('Current Dasha'),
-              const SizedBox(height: 8),
-              _CurrentDashaCard(dasha: currentDashaMap),
-              const SizedBox(height: 20),
-            ],
-            _SectionHeader('Vimshottari Mahadasha'),
-            const SizedBox(height: 4),
-            Text('Tap a period to explore Antardasha',
-                style: tt.bodySmall?.copyWith(color: c.textSecondary)),
-            const SizedBox(height: 12),
-            if (periods.isEmpty)
-              Text('No dasha data available.',
-                  style: tt.bodySmall?.copyWith(color: c.textSecondary))
-            else
-              Container(
-                decoration: BoxDecoration(
-                  color: c.card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: c.border),
+    if (selectedMaha != null) {
+      final maha = periods.firstWhere(
+        (p) => p.planet == selectedMaha,
+        orElse: () => MahaDasha(planet: '', startDate: '', endDate: '', antars: []),
+      );
+      if (maha.planet.isEmpty) return const SizedBox.shrink();
+
+      if (selectedAntar != null) {
+        return _SubDashaView(
+          profileId: profileId,
+          md: selectedMaha!,
+          ad: selectedAntar!,
+          onBack: onBackAntar,
+        );
+      }
+
+      return _AntarDashaView(
+        maha: maha,
+        onBack: onBackMaha,
+        onSelectAntar: onSelectAntar,
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (currentDasha != null) ...[
+          _SectionHeader('Current Dasha'),
+          const SizedBox(height: 8),
+          _CurrentDashaCard(dasha: currentDasha!),
+          const SizedBox(height: 20),
+        ],
+        _SectionHeader('Vimshottari Mahadasha'),
+        const SizedBox(height: 4),
+        Text('Tap a period to explore Antardasha',
+            style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+        const SizedBox(height: 12),
+        if (periods.isEmpty)
+          Text('No dasha data available.', style: tt.bodySmall?.copyWith(color: c.textSecondary))
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: c.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.border),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: c.primary.withAlpha(30),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 3, child: Text('Planet', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
+                      Expanded(flex: 3, child: Text('Start', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
+                      Expanded(flex: 3, child: Text('End', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
+                      const SizedBox(width: 24),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    Container(
+                ...periods.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final p = entry.value;
+                  final isCurrent = p.isCurrent;
+                  return InkWell(
+                    onTap: () => onSelectMaha(p.planet),
+                    child: Container(
                       decoration: BoxDecoration(
-                        color: c.primary.withAlpha(30),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        color: isCurrent
+                            ? c.primary.withAlpha(20)
+                            : i.isOdd ? c.surface.withAlpha(30) : Colors.transparent,
+                        border: Border(top: BorderSide(color: c.border, width: 0.5)),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
-                          Expanded(flex: 3, child: Text('Planet', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
-                          Expanded(flex: 3, child: Text('Start', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
-                          Expanded(flex: 3, child: Text('End', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
-                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 3,
+                            child: Row(children: [
+                              Text(p.planet,
+                                  style: tt.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: isCurrent ? c.primary : c.textPrimary,
+                                  )),
+                              if (isCurrent) ...[
+                                const SizedBox(width: 6),
+                                _NowBadge(c: c),
+                              ],
+                            ]),
+                          ),
+                          Expanded(flex: 3,
+                              child: Text(_fmtDashaDate(p.startDate),
+                                  style: tt.bodySmall?.copyWith(fontSize: 11))),
+                          Expanded(flex: 3,
+                              child: Text(_fmtDashaDate(p.endDate),
+                                  style: tt.bodySmall?.copyWith(fontSize: 11))),
+                          Icon(Icons.chevron_right_rounded, size: 18, color: c.textSecondary),
                         ],
                       ),
                     ),
-                    ...periods.asMap().entries.map((entry) {
-                      final i = entry.key;
-                      final p = entry.value;
-                      final planet = p['planet']?.toString() ?? '—';
-                      final start = _fmtDashaDate(p['startDate']?.toString() ?? '');
-                      final end = _fmtDashaDate(p['endDate']?.toString() ?? '');
-                      final isCurrent = _isCurrentPeriod(
-                        p['startDate']?.toString() ?? '',
-                        p['endDate']?.toString() ?? '',
-                      );
-                      return InkWell(
-                        onTap: () => setState(() => _selectedMaha = planet),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: isCurrent
-                                ? c.primary.withAlpha(20)
-                                : i.isOdd
-                                    ? c.surface.withAlpha(30)
-                                    : Colors.transparent,
-                            border: Border(top: BorderSide(color: c.border, width: 0.5)),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: Row(
-                                  children: [
-                                    Text(planet,
-                                        style: tt.bodySmall?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: isCurrent ? c.primary : c.textPrimary,
-                                        )),
-                                    if (isCurrent) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: c.primary,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text('Now',
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.w700)),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              Expanded(flex: 3, child: Text(start, style: tt.bodySmall?.copyWith(fontSize: 11))),
-                              Expanded(flex: 3, child: Text(end, style: tt.bodySmall?.copyWith(fontSize: 11))),
-                              Icon(Icons.chevron_right_rounded, size: 18, color: c.textSecondary),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 24),
-          ],
-        );
-      },
+                  );
+                }),
+              ],
+            ),
+          ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _NowBadge extends StatelessWidget {
+  const _NowBadge({required this.c});
+  final AppThemeColors c;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(8)),
+      child: const Text('Now',
+          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -1283,12 +1327,10 @@ class _DashaTabState extends ConsumerState<_DashaTab> {
 class _AntarDashaView extends StatelessWidget {
   const _AntarDashaView({
     required this.maha,
-    required this.antars,
     required this.onBack,
     required this.onSelectAntar,
   });
-  final Map<String, dynamic> maha;
-  final List<Map<String, dynamic>> antars;
+  final MahaDasha maha;
   final VoidCallback onBack;
   final ValueChanged<String> onSelectAntar;
 
@@ -1296,32 +1338,19 @@ class _AntarDashaView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    final mahaPlanet = maha['planet']?.toString() ?? '';
+    final antars = maha.antars;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Back button + header
-        Row(
-          children: [
-            GestureDetector(
-              onTap: onBack,
-              child: Row(
-                children: [
-                  Icon(Icons.arrow_back_ios_rounded, size: 16, color: c.primary),
-                  Text('Back', style: tt.bodySmall?.copyWith(color: c.primary, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ],
-        ),
+        _BackButton(onTap: onBack),
         const SizedBox(height: 16),
-        _SectionHeader('$mahaPlanet Antardasha'),
+        _SectionHeader('${maha.planet} Antardasha'),
         const SizedBox(height: 4),
-        Text('${_fmtDashaDate(maha['startDate']?.toString() ?? '')} — ${_fmtDashaDate(maha['endDate']?.toString() ?? '')}',
+        Text('${_fmtDashaDate(maha.startDate)} — ${_fmtDashaDate(maha.endDate)}',
             style: tt.bodySmall?.copyWith(color: c.textSecondary)),
         const SizedBox(height: 4),
-        Text('Tap an Antardasha to see Pratyantar/Sookshma/Prana levels',
+        Text('Tap an Antardasha to see Pratyantar levels',
             style: tt.bodySmall?.copyWith(color: c.textSecondary)),
         const SizedBox(height: 12),
         if (antars.isEmpty)
@@ -1353,10 +1382,8 @@ class _AntarDashaView extends StatelessWidget {
                 ...antars.asMap().entries.map((entry) {
                   final i = entry.key;
                   final a = entry.value;
-                  final planet = a['planet']?.toString() ?? '—';
-                  final endDate = _fmtDashaDate(a['endDate']?.toString() ?? '');
                   return InkWell(
-                    onTap: () => onSelectAntar(planet),
+                    onTap: () => onSelectAntar(a.planet),
                     child: Container(
                       decoration: BoxDecoration(
                         color: i.isOdd ? c.surface.withAlpha(30) : Colors.transparent,
@@ -1366,10 +1393,11 @@ class _AntarDashaView extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(flex: 3,
-                              child: Text('$mahaPlanet / $planet',
+                              child: Text('${maha.planet} / ${a.planet}',
                                   style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600))),
                           Expanded(flex: 4,
-                              child: Text(endDate, style: tt.bodySmall?.copyWith(fontSize: 11))),
+                              child: Text(_fmtDashaDate(a.endDate),
+                                  style: tt.bodySmall?.copyWith(fontSize: 11))),
                           Icon(Icons.chevron_right_rounded, size: 18, color: c.textSecondary),
                         ],
                       ),
@@ -1401,25 +1429,12 @@ class _SubDashaView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    // Use Sun as default pd/sd — the API returns prana levels regardless
     final subAsync = ref.watch(kundliSpecificSubDashaProvider((profileId, md, ad, md, md)));
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(
-          children: [
-            GestureDetector(
-              onTap: onBack,
-              child: Row(
-                children: [
-                  Icon(Icons.arrow_back_ios_rounded, size: 16, color: c.primary),
-                  Text('Back', style: tt.bodySmall?.copyWith(color: c.primary, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ],
-        ),
+        _BackButton(onTap: onBack),
         const SizedBox(height: 16),
         _SectionHeader('$md / $ad Sub-Dasha'),
         const SizedBox(height: 12),
@@ -1431,24 +1446,26 @@ class _SubDashaView extends ConsumerWidget {
             ),
           ),
           error: (e, _) => Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline, color: c.error, size: 36),
               const SizedBox(height: 8),
-              Text('Failed to load sub-dasha data',
+              Text('Failed to load sub-dasha',
                   style: tt.bodySmall?.copyWith(color: c.textSecondary)),
               const SizedBox(height: 8),
               ElevatedButton(
-                onPressed: () => ref.invalidate(
-                    kundliSpecificSubDashaProvider((profileId, md, ad, md, md))),
+                onPressed: () =>
+                    ref.invalidate(kundliSpecificSubDashaProvider((profileId, md, ad, md, md))),
                 child: const Text('Retry'),
               ),
             ],
           ),
           data: (data) {
             final prana = (data['pranadasha'] as List?)
-                ?.whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList() ?? [];
+                    ?.whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList() ??
+                [];
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1457,7 +1474,7 @@ class _SubDashaView extends ConsumerWidget {
                   _Row('Antardasha', data['antardasha']?.toString() ?? '—'),
                   _Row('Paryantardasha', data['paryantardasha']?.toString() ?? '—'),
                   _Row('Shookshamadasha', data['shookshamadasha']?.toString() ?? '—'),
-                ]),
+                ].where((r) => r.value != '—').toList()),
                 if (prana.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   _SectionHeader('Pranadasha'),
@@ -1537,7 +1554,9 @@ class _CurrentDashaCard extends StatelessWidget {
       'End': dasha['end_date'] ?? dasha['endDate'],
     };
     for (final e in fields.entries) {
-      if (e.value != null) rows.add(_Row(e.key, e.value.toString()));
+      if (e.value != null && e.value.toString().isNotEmpty) {
+        rows.add(_Row(e.key, e.value.toString()));
+      }
     }
     if (rows.isEmpty) return const SizedBox.shrink();
     return _InfoCard(rows: rows, highlight: true);
@@ -1554,15 +1573,10 @@ class _DoshaTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    final data = report.chartData;
-    final mangalRaw2 = data['mangalDosha'];
-    final mangal = mangalRaw2 is Map ? Map<String, dynamic>.from(mangalRaw2) : null;
-    final kaalSarpRaw = data['kaalSarpDosha'];
-    final kaalSarp = kaalSarpRaw is Map ? Map<String, dynamic>.from(kaalSarpRaw) : null;
-    final sadeSatiRaw = data['sadeSatiStatus'];
-    final sadeSati = sadeSatiRaw is Map ? Map<String, dynamic>.from(sadeSatiRaw) : null;
-    final pitraRaw = data['pitraDosha'];
-    final pitra = pitraRaw is Map ? Map<String, dynamic>.from(pitraRaw) : null;
+    final mangal = report.mangalDosha;
+    final kaalSarp = report.kaalSarpDosha;
+    final sadeSati = report.sadeSatiStatus;
+    final pitra = report.pitraDosha;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1572,9 +1586,9 @@ class _DoshaTab extends StatelessWidget {
           const SizedBox(height: 8),
           _DoshaCard(
             name: 'Mangal Dosha',
-            isPresent: mangal['isManglik'] as bool? ?? false,
-            description: mangal['description']?.toString() ?? '',
-            remedies: (mangal['remedies'] as List?)?.cast<String>() ?? [],
+            isPresent: mangal.isManglik,
+            description: mangal.description,
+            remedies: mangal.remedies,
           ),
           const SizedBox(height: 16),
         ],
@@ -1583,22 +1597,29 @@ class _DoshaTab extends StatelessWidget {
           const SizedBox(height: 8),
           _DoshaCard(
             name: 'Kaal Sarp Dosha',
-            isPresent: kaalSarp['isPresent'] as bool? ?? false,
-            description: kaalSarp['description']?.toString() ?? '',
-            subtitle: kaalSarp['type']?.toString() ?? '',
+            isPresent: kaalSarp.isPresent,
+            description: kaalSarp.description,
+            subtitle: kaalSarp.type.isNotEmpty
+                ? '${kaalSarp.type}${kaalSarp.severity.isNotEmpty ? ' — ${kaalSarp.severity}' : ''}'
+                : null,
           ),
           const SizedBox(height: 16),
         ],
         if (sadeSati != null) ...[
           _SectionHeader('Sade Sati'),
           const SizedBox(height: 8),
-          _SadeSatiCard(sadeSati: sadeSati),
+          _DoshaCard(
+            name: 'Sade Sati',
+            isPresent: sadeSati.isActive,
+            description: sadeSati.description,
+            subtitle: sadeSati.phase.isNotEmpty ? 'Phase: ${sadeSati.phase}' : null,
+          ),
           const SizedBox(height: 16),
         ],
         if (pitra != null) ...[
           _SectionHeader('Pitra Dosha'),
           const SizedBox(height: 8),
-          _PitraCard(pitra: pitra),
+          _DoshaCard(name: 'Pitra Dosha', isPresent: pitra.isPresent, description: pitra.description),
           const SizedBox(height: 16),
         ],
         if (mangal == null && kaalSarp == null && sadeSati == null && pitra == null)
@@ -1637,8 +1658,7 @@ class _DoshaCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: isPresent ? c.error.withAlpha(80) : c.border),
+        border: Border.all(color: isPresent ? c.error.withAlpha(80) : c.border),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1654,39 +1674,29 @@ class _DoshaCard extends StatelessWidget {
                 ),
                 child: Text(isPresent ? 'Present' : 'Not Present',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
+                        color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
               if (subtitle != null && subtitle!.isNotEmpty) ...[
                 const SizedBox(width: 8),
-                Text(subtitle!,
-                    style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+                Expanded(child: Text(subtitle!, style: tt.bodySmall?.copyWith(color: c.textSecondary))),
               ],
             ],
           ),
           if (description.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(description,
-                style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+            Text(description, style: tt.bodySmall?.copyWith(color: c.textSecondary, height: 1.5)),
           ],
           if (remedies.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text('Remedies',
-                style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text('Remedies', style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             ...remedies.map((r) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('• ',
-                          style:
-                              TextStyle(color: c.primary, fontSize: 14)),
-                      Expanded(
-                          child: Text(r,
-                              style: tt.bodySmall
-                                  ?.copyWith(color: c.textSecondary))),
+                      Text('• ', style: TextStyle(color: c.primary, fontSize: 14)),
+                      Expanded(child: Text(r, style: tt.bodySmall?.copyWith(color: c.textSecondary))),
                     ],
                   ),
                 )),
@@ -1694,38 +1704,6 @@ class _DoshaCard extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _SadeSatiCard extends StatelessWidget {
-  const _SadeSatiCard({required this.sadeSati});
-  final Map<String, dynamic> sadeSati;
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = sadeSati['is_in_sade_sati'] as bool? ??
-        sadeSati['isInSadeSati'] as bool? ?? false;
-    final desc = sadeSati['bot_response']?.toString() ??
-        sadeSati['description']?.toString() ?? '';
-    return _DoshaCard(
-        name: 'Sade Sati',
-        isPresent: isActive,
-        description: desc);
-  }
-}
-
-class _PitraCard extends StatelessWidget {
-  const _PitraCard({required this.pitra});
-  final Map<String, dynamic> pitra;
-
-  @override
-  Widget build(BuildContext context) {
-    final isPresent = pitra['is_pitra_dosha'] as bool? ??
-        pitra['isPresent'] as bool? ?? false;
-    final desc = pitra['bot_response']?.toString() ??
-        pitra['description']?.toString() ?? '';
-    return _DoshaCard(
-        name: 'Pitra Dosha', isPresent: isPresent, description: desc);
   }
 }
 
@@ -1766,11 +1744,8 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        // Planet selector
-        _ChartSubTabBar(
-          tabs: _ashtakvargaPlanets
-              .map((p) => p == 'total' ? 'Total' : p)
-              .toList(),
+        _HorizontalChipBar(
+          chips: _ashtakvargaPlanets.map((p) => p == 'total' ? 'Total' : p).toList(),
           selected: _ashtakvargaPlanets.indexOf(_planet),
           onTap: (i) => setState(() => _planet = _ashtakvargaPlanets[i]),
         ),
@@ -1793,46 +1768,28 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
                       style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => ref.invalidate(
-                        kundliAshtakvargaProvider((widget.profileId, _planet))),
+                    onPressed: () =>
+                        ref.invalidate(kundliAshtakvargaProvider((widget.profileId, _planet))),
                     child: const Text('Retry'),
                   ),
                 ],
               ),
             ),
             data: (data) {
-              final scoresRaw = data['scores'];
-              final scores = scoresRaw is Map
-                  ? Map<String, dynamic>.from(scoresRaw)
-                  : <String, dynamic>{};
-              final chartImage = data['chartImage'] as String?;
-              final planetLabel = data['planet']?.toString() ?? _planet;
-
-              // Compute total bindus
-              final total = scores.values
-                  .fold<int>(0, (s, v) => s + ((v as num?)?.toInt() ?? 0));
+              final avData = AshtakvargaData.fromJson(data);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Chart image (SVG/base64) if available
-                  if (chartImage != null && chartImage.isNotEmpty) ...[
-                    _SectionHeader('Ashtakvarga Chart — $planetLabel'),
+                  // SVG chart if available (cached from backend)
+                  if (avData.chartImageUrl != null && avData.chartImageUrl!.isNotEmpty) ...[
+                    _SectionHeader('Ashtakvarga Chart — ${avData.planet}'),
                     const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: c.card,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: c.border),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: _ChartImageView(url: chartImage),
-                    ),
+                    _SvgChartCard(url: avData.chartImageUrl!, label: '${avData.planet} Ashtakvarga'),
                     const SizedBox(height: 20),
                   ],
 
-                  // Bindus score bar chart
+                  // Bindus bar chart
                   _SectionHeader('Bindus by Sign'),
                   const SizedBox(height: 10),
                   Container(
@@ -1845,19 +1802,11 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
                     child: Column(
                       children: _zodiacOrder.map((sign) {
                         final score =
-                            (scores[sign] as num?)?.toInt() ??
-                            (scores[sign.toLowerCase()] as num?)?.toInt() ??
-                            0;
-                        final capitalised =
-                            sign[0].toUpperCase() + sign.substring(1);
-                        final emoji = _zodiacEmoji[sign] ?? '';
+                            avData.scores[sign] ?? avData.scores[sign.toLowerCase()] ?? 0;
+                        final label = sign[0].toUpperCase() + sign.substring(1);
                         const maxBindus = 8;
                         final fraction = (score / maxBindus).clamp(0.0, 1.0);
-                        final barColor = score >= 5
-                            ? c.success
-                            : score >= 3
-                                ? c.accent
-                                : c.error;
+                        final barColor = score >= 5 ? c.success : score >= 3 ? c.accent : c.error;
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -1866,9 +1815,8 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
                               SizedBox(
                                 width: 110,
                                 child: Text(
-                                  '$emoji $capitalised',
-                                  style: tt.bodySmall?.copyWith(
-                                      fontWeight: FontWeight.w500),
+                                  '${_zodiacEmoji[sign] ?? ''} $label',
+                                  style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w500),
                                 ),
                               ),
                               Expanded(
@@ -1878,8 +1826,7 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
                                     value: fraction,
                                     minHeight: 10,
                                     backgroundColor: c.border.withAlpha(80),
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(barColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
                                   ),
                                 ),
                               ),
@@ -1904,22 +1851,20 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
 
                   const SizedBox(height: 14),
 
-                  // Summary row
+                  // Total summary
                   Container(
                     decoration: BoxDecoration(
                       color: c.primary.withAlpha(20),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: c.primary.withAlpha(60)),
                     ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Total Bindus',
-                            style: tt.bodySmall
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                        Text('$total / ${_zodiacOrder.length * 8}',
+                            style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                        Text('${avData.totalBindus} / ${_zodiacOrder.length * 8}',
                             style: tt.titleSmall?.copyWith(
                               color: c.primary,
                               fontWeight: FontWeight.w700,
@@ -1937,40 +1882,6 @@ class _AshtakvargaTabState extends ConsumerState<_AshtakvargaTab> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ChartImageView extends StatelessWidget {
-  const _ChartImageView({required this.url});
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tt = Theme.of(context).textTheme;
-    return Image.network(
-      url,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.broken_image_outlined, color: c.textSecondary, size: 20),
-            const SizedBox(width: 8),
-            Text('Chart unavailable',
-                style: tt.labelSmall?.copyWith(color: c.textSecondary)),
-          ],
-        ),
-      ),
-      loadingBuilder: (_, child, progress) {
-        if (progress == null) return child;
-        return SizedBox(
-          height: 80,
-          child: Center(child: CircularProgressIndicator(color: c.primary, strokeWidth: 2)),
-        );
-      },
     );
   }
 }
@@ -1995,9 +1906,8 @@ class _AshtakvargaLegend extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Ashtakvarga assigns each planet a score (bindus) per zodiac sign. '
-            'Each planet contributes points based on its position relative to '
-            'other planets and the ascendant. Higher bindus in a sign indicate '
-            'more favourable results when a planet transits that sign.',
+            'Higher bindus in a sign indicate more favourable results when a '
+            'planet transits that sign.',
             style: tt.bodySmall?.copyWith(color: c.textSecondary, height: 1.6),
           ),
           const SizedBox(height: 12),
@@ -2023,19 +1933,364 @@ class _LegendRow extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     return Row(
       children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 8),
-        Text(label,
-            style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+        Text(label, style: tt.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(width: 6),
         Text('— $desc',
             style: tt.labelSmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withAlpha(140))),
       ],
+    );
+  }
+}
+
+// ─── Tab: KP (Krishnamurti Paddhati) ─────────────────────────────────────────
+
+class _KpTab extends ConsumerStatefulWidget {
+  const _KpTab({required this.report});
+  final KundliReport report;
+
+  @override
+  ConsumerState<_KpTab> createState() => _KpTabState();
+}
+
+class _KpTabState extends ConsumerState<_KpTab> {
+  // KP sub-sections
+  int _kpSub = 0;
+  static const _kpSubTabs = ['KP Chart', 'Sub Lords', 'House Cusps'];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    final report = widget.report;
+
+    // Use cached D1 SVG if available; otherwise show the chart painter
+    final kpChartUrl = report.chartSvgUrls['D1'];
+    final rawKp = report.rawData['kpPlanets'];
+    final kpPlanets = rawKp is List
+        ? rawKp.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        : <Map<String, dynamic>>[];
+    final rawCusps = report.rawData['kpHouseCusps'];
+    final cusps = rawCusps is List
+        ? rawCusps.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        : <Map<String, dynamic>>[];
+
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _HorizontalChipBar(
+          chips: _kpSubTabs,
+          selected: _kpSub,
+          onTap: (i) => setState(() => _kpSub = i),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_kpSub == 0) ...[
+                _SectionHeader('KP Lagna Chart'),
+                const SizedBox(height: 4),
+                Text(
+                  'Krishnamurti Paddhati uses the same chart as Lagna (D1) but '
+                  'interprets it through sub-lords and stellar positions.',
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                if (kpChartUrl != null)
+                  _SvgChartCard(url: kpChartUrl, label: 'KP Chart')
+                else ...[
+                  // Fall back to the painter with D1 planets
+                  Container(
+                    decoration: BoxDecoration(
+                      color: c.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: c.border),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: report.ascendant != null
+                        ? KundliChartWidget(
+                            planets: report.planets
+                                .where((p) => p.house > 0)
+                                .map((p) => ChartPlanet(
+                                      shortName: p.name.length > 2 ? p.name.substring(0, 2) : p.name,
+                                      house: p.house,
+                                      isRetro: p.isRetro,
+                                    ))
+                                .toList(),
+                            ascSign: report.ascendant!.sign,
+                            style: KundliChartStyle.south,
+                            size: MediaQuery.of(context).size.width - 80,
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text('KP chart unavailable',
+                                style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+                          ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                _KpInfoCard(),
+              ] else if (_kpSub == 1) ...[
+                _SectionHeader('Sub Lords'),
+                const SizedBox(height: 4),
+                Text(
+                  'In KP astrology, each planet is placed in a star lord\'s sub-division. '
+                  'The sub-lord reveals specific results the planet will deliver.',
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                if (kpPlanets.isNotEmpty)
+                  _KpSubLordsTable(planets: kpPlanets)
+                else
+                  _KpFallbackTable(planets: report.planets),
+              ] else ...[
+                _SectionHeader('House Cusps'),
+                const SizedBox(height: 4),
+                Text(
+                  'KP uses Placidus house cusps. Each house cusp falls in a specific star '
+                  'sub-lord which determines the signification of that house.',
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                if (cusps.isNotEmpty)
+                  _KpCuspsTable(cusps: cusps)
+                else
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Text(
+                        'KP house cusps data not available.\nThis section requires a KP-specific API call.',
+                        style: tt.bodySmall?.copyWith(color: c.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _KpInfoCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.border),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('About KP Astrology', style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Text(
+            'Krishnamurti Paddhati (KP) is a highly accurate system of stellar astrology '
+            'developed by K.S. Krishnamurti. It uses Placidus house system, 249 sub-divisions '
+            'of the zodiac based on Vimshottari dasha proportions, and focuses on the sub-lord '
+            'of the house cusp to determine precise event timing.',
+            style: tt.bodySmall?.copyWith(color: c.textSecondary, height: 1.6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KpSubLordsTable extends StatelessWidget {
+  const _KpSubLordsTable({required this.planets});
+  final List<Map<String, dynamic>> planets;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    final header = tt.labelSmall?.copyWith(fontWeight: FontWeight.w700);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              color: c.primary.withAlpha(25),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  SizedBox(width: 80, child: Text('Planet', style: header)),
+                  SizedBox(width: 80, child: Text('Sign', style: header)),
+                  SizedBox(width: 80, child: Text('Star Lord', style: header)),
+                  SizedBox(width: 80, child: Text('Sub Lord', style: header)),
+                  SizedBox(width: 60, child: Text('Sub-Sub', style: header)),
+                ],
+              ),
+            ),
+            ...planets.asMap().entries.map((entry) {
+              final i = entry.key;
+              final p = entry.value;
+              return Container(
+                decoration: BoxDecoration(
+                  color: i.isEven ? Colors.transparent : c.surface.withAlpha(30),
+                  border: Border(top: BorderSide(color: c.border, width: 0.5)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    SizedBox(width: 80, child: Text(p['name']?.toString() ?? '—', style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600))),
+                    SizedBox(width: 80, child: Text(p['sign']?.toString() ?? '—', style: tt.bodySmall)),
+                    SizedBox(width: 80, child: Text(p['starLord']?.toString() ?? p['nakshatraLord']?.toString() ?? '—', style: tt.bodySmall)),
+                    SizedBox(width: 80, child: Text(p['subLord']?.toString() ?? '—', style: tt.bodySmall)),
+                    SizedBox(width: 60, child: Text(p['subSubLord']?.toString() ?? '—', style: tt.bodySmall?.copyWith(color: c.textSecondary))),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KpFallbackTable extends StatelessWidget {
+  const _KpFallbackTable({required this.planets});
+  final List<PlanetData> planets;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    final header = tt.labelSmall?.copyWith(fontWeight: FontWeight.w700);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              color: c.primary.withAlpha(25),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  SizedBox(width: 88, child: Text('Planet', style: header)),
+                  SizedBox(width: 80, child: Text('Sign', style: header)),
+                  SizedBox(width: 60, child: Text('Degree', style: header)),
+                  SizedBox(width: 100, child: Text('Star Lord', style: header)),
+                  SizedBox(width: 40, child: Text('Pada', style: header)),
+                ],
+              ),
+            ),
+            ...planets.asMap().entries.map((entry) {
+              final i = entry.key;
+              final p = entry.value;
+              return Container(
+                decoration: BoxDecoration(
+                  color: i.isEven ? Colors.transparent : c.surface.withAlpha(30),
+                  border: Border(top: BorderSide(color: c.border, width: 0.5)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      child: Row(children: [
+                        Text(p.name, style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+                        if (p.isRetro) ...[const SizedBox(width: 4), _RetroTag(c: c)],
+                      ]),
+                    ),
+                    SizedBox(width: 80, child: Text(p.sign, style: tt.bodySmall)),
+                    SizedBox(width: 60, child: Text(p.degreeStr, style: tt.labelSmall?.copyWith(color: c.textSecondary))),
+                    SizedBox(width: 100, child: Text(p.nakshatraLord, style: tt.bodySmall)),
+                    SizedBox(width: 40, child: Text(p.nakshatraPada.toString(), style: tt.bodySmall?.copyWith(color: c.textSecondary))),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KpCuspsTable extends StatelessWidget {
+  const _KpCuspsTable({required this.cusps});
+  final List<Map<String, dynamic>> cusps;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    final header = tt.labelSmall?.copyWith(fontWeight: FontWeight.w700);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            color: c.primary.withAlpha(25),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                SizedBox(width: 60, child: Text('House', style: header)),
+                Expanded(child: Text('Sign', style: header)),
+                Expanded(child: Text('Star Lord', style: header)),
+                Expanded(child: Text('Sub Lord', style: header)),
+              ],
+            ),
+          ),
+          ...cusps.asMap().entries.map((entry) {
+            final i = entry.key;
+            final cusp = entry.value;
+            return Container(
+              decoration: BoxDecoration(
+                color: i.isEven ? Colors.transparent : c.surface.withAlpha(30),
+                border: Border(top: BorderSide(color: c.border, width: 0.5)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  SizedBox(width: 60, child: Text(cusp['house']?.toString() ?? '${i + 1}', style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w700))),
+                  Expanded(child: Text(cusp['sign']?.toString() ?? '—', style: tt.bodySmall)),
+                  Expanded(child: Text(cusp['starLord']?.toString() ?? cusp['nakshatraLord']?.toString() ?? '—', style: tt.bodySmall)),
+                  Expanded(child: Text(cusp['subLord']?.toString() ?? '—', style: tt.bodySmall)),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }
@@ -2050,8 +2305,8 @@ class _ReportTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    final data = report.chartData;
-    final prediction = data['generalPrediction']?.toString() ?? '';
+    final prediction = report.generalPrediction ?? '';
+    final asc = report.ascendant;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -2060,10 +2315,18 @@ class _ReportTab extends StatelessWidget {
         const SizedBox(height: 8),
         _InfoCard(rows: [
           _Row('Computed At', formatDateTime(report.computedAt)),
-          if ((data['ascendant'] as Map?)?.isNotEmpty == true)
-            _Row('Ascendant', (data['ascendant'] as Map)['sign']?.toString() ?? '—'),
+          _Row('Cache', report.cached ? 'Cached result' : 'Freshly computed'),
+          if (asc != null) ...[
+            _Row('Ascendant', asc.sign),
+            _Row('Asc. Degree', "${asc.degree.toStringAsFixed(2)}°"),
+            _Row('Asc. Nakshatra', '${asc.nakshatra} (${asc.nakshatraLord})'),
+          ],
+          if (report.planets.isNotEmpty)
+            _Row('Planets', '${report.planets.length} positioned'),
+          if (report.dasha.isNotEmpty)
+            _Row('Dasha periods', '${report.dasha.length} mahadasha periods'),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         if (prediction.isNotEmpty) ...[
           _SectionHeader('General Prediction'),
           const SizedBox(height: 8),
@@ -2075,26 +2338,34 @@ class _ReportTab extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(16),
             child: Text(prediction,
-                style: tt.bodyMedium?.copyWith(
-                    color: c.textSecondary, height: 1.6)),
+                style: tt.bodyMedium?.copyWith(color: c.textSecondary, height: 1.6)),
           ),
           const SizedBox(height: 16),
-        ],
-        if (prediction.isEmpty)
+        ] else
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 48),
               child: Column(
                 children: [
-                  Text('📊', style: const TextStyle(fontSize: 48)),
+                  const Text('📊', style: TextStyle(fontSize: 48)),
                   const SizedBox(height: 12),
                   Text('Full report analysis coming soon.',
-                      style:
-                          tt.bodyMedium?.copyWith(color: c.textSecondary)),
+                      style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
                 ],
               ),
             ),
           ),
+
+        // Chart SVG URLs summary
+        if (report.chartSvgUrls.isNotEmpty) ...[
+          _SectionHeader('Saved Charts'),
+          const SizedBox(height: 8),
+          _InfoCard(rows: report.chartSvgUrls.entries
+              .map((e) => _Row(e.key, 'Saved ✓'))
+              .toList()),
+          const SizedBox(height: 16),
+        ],
+
         const SizedBox(height: 24),
       ],
     );
@@ -2115,9 +2386,8 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
     return Text(text,
-        style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700));
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700));
   }
 }
 
@@ -2133,6 +2403,8 @@ class _InfoCard extends StatelessWidget {
     final bg = highlight ? c.primary.withAlpha(20) : c.card;
     final border = highlight ? c.primary.withAlpha(80) : c.border;
 
+    if (rows.isEmpty) return const SizedBox.shrink();
+
     return Container(
       decoration: BoxDecoration(
         color: bg,
@@ -2145,29 +2417,45 @@ class _InfoCard extends StatelessWidget {
           final row = entry.value;
           return Container(
             decoration: BoxDecoration(
-              border: i > 0
-                  ? Border(top: BorderSide(color: c.border, width: 0.5))
-                  : null,
+              border: i > 0 ? Border(top: BorderSide(color: c.border, width: 0.5)) : null,
             ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
                   width: 120,
-                  child: Text(row.label,
-                      style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+                  child: Text(row.label, style: tt.bodySmall?.copyWith(color: c.textSecondary)),
                 ),
                 Expanded(
                   child: Text(row.value,
-                      style: tt.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                      style: tt.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.arrow_back_ios_rounded, size: 16, color: c.primary),
+          Text('Back', style: tt.bodySmall?.copyWith(color: c.primary, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
