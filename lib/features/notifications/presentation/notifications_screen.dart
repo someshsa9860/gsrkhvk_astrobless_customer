@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/format_utils.dart';
 import '../data/notifications_repository.dart';
@@ -54,11 +56,13 @@ class NotificationsScreen extends ConsumerWidget {
                 notification: notifications[i],
                 index: i,
                 onTap: () {
-                  if (!notifications[i].isRead) {
+                  final n = notifications[i];
+                  if (!n.isRead) {
                     ref
                         .read(notificationsNotifierProvider.notifier)
-                        .markRead(notifications[i].id);
+                        .markRead(n.id);
                   }
+                  _navigateForNotification(context, n);
                 },
               ),
             ),
@@ -66,6 +70,28 @@ class NotificationsScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+void _navigateForNotification(BuildContext context, AppNotification notification) {
+  switch (notification.type) {
+    case 'consultation':
+      final id = notification.data?['consultationId'] as String?;
+      if (id != null) {
+        context.push(AppRoutes.consultationChat(id));
+      } else {
+        context.push(AppRoutes.chat);
+      }
+    case 'wallet':
+      context.push(AppRoutes.wallet);
+    case 'kundli':
+      context.push(AppRoutes.kundliList);
+    case 'horoscope':
+      context.push(AppRoutes.horoscope);
+    case 'call':
+      context.push(AppRoutes.call);
+    default:
+      break;
   }
 }
 

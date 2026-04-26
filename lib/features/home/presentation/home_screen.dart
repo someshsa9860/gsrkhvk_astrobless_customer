@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/theme/theme_mode_provider.dart';
 import '../../astrologers/data/astrologers_repository.dart';
@@ -261,14 +262,14 @@ class _FallbackBannerContent extends StatelessWidget {
 // ─── Feature Grid ─────────────────────────────────────────────────────────
 
 const _features = [
-  (icon: '♈', label: 'Horoscope', route: '/horoscope', color: Color(0xFF5C6BC0)),
-  (icon: '🔮', label: 'Kundli', route: '/kundli', color: Color(0xFF7B1FA2)),
-  (icon: '💑', label: 'Matching', route: '/kundli', color: Color(0xFFE91E63)),
-  (icon: '🌟', label: 'Talk Now', route: '/astrologers', color: Color(0xFFFF6D00)),
-  (icon: '🪔', label: 'Puja', route: '/puja', color: Color(0xFF009688)),
-  (icon: '🛍️', label: 'AstroMall', route: '/astromall', color: Color(0xFF673AB7)),
-  (icon: '🔢', label: 'Numerology', route: '/horoscope', color: Color(0xFF2196F3)),
-  (icon: '🏠', label: 'Vastu', route: '/horoscope', color: Color(0xFF4CAF50)),
+  (icon: '♈', label: 'Horoscope', route: AppRoutes.horoscope, color: AppColors.primary),
+  (icon: '🔮', label: 'Kundli', route: AppRoutes.kundliList, color: AppColors.featureKundli),
+  (icon: '💑', label: 'Matching', route: AppRoutes.kundliMatch, color: AppColors.featureMatching),
+  (icon: '🌟', label: 'Talk Now', route: AppRoutes.astrologers, color: AppColors.featureTalkNow),
+  (icon: '🪔', label: 'Puja', route: AppRoutes.puja, color: AppColors.featurePuja),
+  (icon: '🛍️', label: 'AstroMall', route: AppRoutes.astromall, color: AppColors.featureAstroMall),
+  (icon: '🔢', label: 'Numerology', route: AppRoutes.horoscope, color: AppColors.info),
+  (icon: '🏠', label: 'Vastu', route: AppRoutes.horoscope, color: AppColors.success),
 ];
 
 class _FeatureGrid extends StatelessWidget {

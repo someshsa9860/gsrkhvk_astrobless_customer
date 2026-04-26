@@ -7,6 +7,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/format_utils.dart';
 import '../../../core/widgets/banner_carousel.dart';
@@ -196,7 +197,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               height: 160,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF3949AB), Color(0xFF1A237E)],
+                  colors: [AppColors.primaryDark, AppColors.bgDark],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -207,7 +208,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF3949AB), Color(0xFF7B1FA2)],
+                  colors: AppColors.brandGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -241,7 +242,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       onPressed: _topupInProgress ? null : _showTopupSheet,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF3949AB),
+                        foregroundColor: AppColors.primaryDark,
                         disabledBackgroundColor: Colors.white54,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20)),
@@ -251,7 +252,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Color(0xFF3949AB)),
+                                  strokeWidth: 2, color: AppColors.primaryDark),
                             )
                           : const Text('Add Money',
                               style: TextStyle(fontWeight: FontWeight.w700)),

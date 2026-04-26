@@ -72,6 +72,8 @@ class SocketService {
   final _connectionCtrl = StreamController<SocketConnectionState>.broadcast();
   final _lowBalanceCtrl = StreamController<Map<String, dynamic>>.broadcast();
   final _presenceUpdateCtrl = StreamController<Map<String, dynamic>>.broadcast();
+  final _typingUpdateCtrl = StreamController<Map<String, dynamic>>.broadcast();
+  final _messageAckCtrl = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<ChatMessage> get onNewMessage => _newMessageCtrl.stream;
   Stream<BillingTick> get onBillingTick => _billingTickCtrl.stream;
@@ -80,6 +82,8 @@ class SocketService {
   Stream<Map<String, dynamic>> get onLowBalance => _lowBalanceCtrl.stream;
   // Broadcasts { astrologerId, isOnline, timestamp } when astrologer presence changes
   Stream<Map<String, dynamic>> get onPresenceUpdate => _presenceUpdateCtrl.stream;
+  Stream<Map<String, dynamic>> get onTypingUpdate => _typingUpdateCtrl.stream;
+  Stream<Map<String, dynamic>> get onMessageAck => _messageAckCtrl.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
@@ -145,6 +149,22 @@ class SocketService {
         _lowBalanceCtrl.add(_toMap(data));
       } catch (e) {
         debugPrint('[Socket] billing:lowBalance parse error: $e');
+      }
+    });
+
+    _socket!.on('typing:update', (data) {
+      try {
+        _typingUpdateCtrl.add(_toMap(data));
+      } catch (e) {
+        debugPrint('[Socket] typing:update parse error: $e');
+      }
+    });
+
+    _socket!.on('message:ack', (data) {
+      try {
+        _messageAckCtrl.add(_toMap(data));
+      } catch (e) {
+        debugPrint('[Socket] message:ack parse error: $e');
       }
     });
 
@@ -236,6 +256,8 @@ class SocketService {
     _connectionCtrl.close();
     _lowBalanceCtrl.close();
     _presenceUpdateCtrl.close();
+    _typingUpdateCtrl.close();
+    _messageAckCtrl.close();
   }
 
   Map<String, dynamic> _toMap(dynamic data) {

@@ -31,11 +31,16 @@ class _ConsultationChatScreenState
   bool _isEnding = false;
   String? _lastMessageId;
   bool _lowBalanceDialogShown = false;
+  bool _isAstrologerTyping = false;
 
   late StreamSubscription<ChatMessage> _msgSub;
   late StreamSubscription<BillingTick> _billingSub;
   late StreamSubscription<Map<String, dynamic>> _endedSub;
   late StreamSubscription<Map<String, dynamic>> _lowBalanceSub;
+  late StreamSubscription<Map<String, dynamic>> _typingUpdateSub;
+  late StreamSubscription<Map<String, dynamic>> _messageAckSub;
+
+  Timer? _typingDebounce;
 
   late Razorpay _razorpay;
   bool _topupInProgress = false;
@@ -87,6 +92,18 @@ class _ConsultationChatScreenState
       _lowBalanceDialogShown = true;
       _showExtendTimeSheet();
     });
+
+    _typingUpdateSub = socket.onTypingUpdate.listen((data) {
+      if (data['consultationId'] != widget.consultationId) return;
+      if (!mounted) return;
+      setState(() => _isAstrologerTyping = data['isTyping'] as bool? ?? false);
+      _scrollToBottom();
+    });
+
+    _messageAckSub = socket.onMessageAck.listen((data) {
+      if (data['consultationId'] != widget.consultationId) return;
+      // Server acknowledged delivery; no UI change needed for now.
+    });
   }
 
   @override
@@ -96,6 +113,9 @@ class _ConsultationChatScreenState
     _billingSub.cancel();
     _endedSub.cancel();
     _lowBalanceSub.cancel();
+    _typingUpdateSub.cancel();
+    _messageAckSub.cancel();
+    _typingDebounce?.cancel();
     _messageCtrl.dispose();
     _scrollCtrl.dispose();
     _razorpay.clear();
@@ -450,7 +470,7 @@ class _ConsultationChatScreenState
 
           // ── Messages list ──────────────────────────────────────────────
           Expanded(
-            child: _messages.isEmpty
+            child: _messages.isEmpty && !_isAstrologerTyping
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -468,9 +488,11 @@ class _ConsultationChatScreenState
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 16),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, i) =>
-                        _ChatBubble(message: _messages[i]),
+                    itemCount: _messages.length + (_isAstrologerTyping ? 1 : 0),
+                    itemBuilder: (context, i) {
+                      if (i == _messages.length) return const _TypingIndicator();
+                      return _ChatBubble(message: _messages[i]);
+                    },
                   ),
           ),
 
@@ -495,8 +517,12 @@ class _ConsultationChatScreenState
                         maxLines: 4,
                         onSubmitted: (_) => _sendMessage(),
                         onChanged: (v) {
+                          _typingDebounce?.cancel();
                           if (v.isNotEmpty) {
                             ref.read(socketServiceProvider).sendTypingStart(widget.consultationId);
+                            _typingDebounce = Timer(const Duration(seconds: 1), () {
+                              ref.read(socketServiceProvider).sendTypingStop(widget.consultationId);
+                            });
                           } else {
                             ref.read(socketServiceProvider).sendTypingStop(widget.consultationId);
                           }
@@ -606,6 +632,39 @@ class _TopUpButton extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: c.primary,
                 fontWeight: FontWeight.w700,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+            bottomLeft: Radius.circular(4),
+          ),
+          border: Border.all(color: c.border),
+        ),
+        child: Text(
+          'typing...',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: c.textSecondary,
+                fontStyle: FontStyle.italic,
               ),
         ),
       ),

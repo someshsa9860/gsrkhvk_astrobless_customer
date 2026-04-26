@@ -31,4 +31,11 @@ class AppColors {
   static const List<Color> brandGradient = [Color(0xFF3949AB), Color(0xFF7C4DFF)];
   static const gradientStart = Color(0xFF5C6BC0);
   static const gradientEnd = Color(0xFF9C27B0);
+
+  // Feature grid tile accent colors
+  static const featureKundli = Color(0xFF7B1FA2);
+  static const featureMatching = Color(0xFFE91E63);
+  static const featureTalkNow = Color(0xFFFF6D00);
+  static const featurePuja = Color(0xFF009688);
+  static const featureAstroMall = Color(0xFF673AB7);
 }
