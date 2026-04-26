@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../data/astrologers_repository.dart';
@@ -306,7 +307,7 @@ class _Tag extends StatelessWidget {
   }
 }
 
-class _PriceAndCTA extends StatelessWidget {
+class _PriceAndCTA extends ConsumerStatefulWidget {
   const _PriceAndCTA({
     required this.chatPrice,
     required this.callPrice,
@@ -321,10 +322,53 @@ class _PriceAndCTA extends StatelessWidget {
   final String astrologerId;
 
   @override
+  ConsumerState<_PriceAndCTA> createState() => _PriceAndCTAState();
+}
+
+class _PriceAndCTAState extends ConsumerState<_PriceAndCTA> {
+  bool _chatLoading = false;
+  bool _callLoading = false;
+
+  Future<void> _startConsultation(String type) async {
+    final isChat = type == 'chat';
+    if (isChat) {
+      setState(() => _chatLoading = true);
+    } else {
+      setState(() => _callLoading = true);
+    }
+    try {
+      final data = await ref.read(apiClientProvider).requestConsultation(
+            astrologerId: widget.astrologerId,
+            type: type,
+          );
+      final consultationId = data['id'] as String;
+      if (!mounted) return;
+      if (isChat) {
+        context.push(AppRoutes.consultationChat(consultationId));
+      } else {
+        context.push(AppRoutes.consultationCall(consultationId));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Could not start consultation: $e'),
+        backgroundColor: context.colors.error,
+      ));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _chatLoading = false;
+          _callLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
     final c = context.colors;
-    final unavailable = !isOnline || isBusy;
+    final unavailable = !widget.isOnline || widget.isBusy;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -344,7 +388,7 @@ class _PriceAndCTA extends StatelessWidget {
                     Text('Chat rate',
                         style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                     Text(
-                      '₹${chatPrice.toStringAsFixed(2)}/min',
+                      '₹${widget.chatPrice.toStringAsFixed(2)}/min',
                       style: tt.titleMedium?.copyWith(
                           color: c.accent, fontWeight: FontWeight.w800),
                     ),
@@ -358,7 +402,7 @@ class _PriceAndCTA extends StatelessWidget {
                     Text('Call rate',
                         style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                     Text(
-                      '₹${callPrice.toStringAsFixed(2)}/min',
+                      '₹${widget.callPrice.toStringAsFixed(2)}/min',
                       style: tt.titleMedium?.copyWith(
                           color: c.accent, fontWeight: FontWeight.w800),
                     ),
@@ -378,7 +422,7 @@ class _PriceAndCTA extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  isBusy ? 'Currently Busy' : 'Currently Offline',
+                  widget.isBusy ? 'Currently Busy' : 'Currently Offline',
                   style: tt.bodyMedium?.copyWith(color: c.textSecondary),
                 ),
               ),
@@ -388,9 +432,17 @@ class _PriceAndCTA extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () =>
-                        context.push(AppRoutes.consultationChat(astrologerId)),
-                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    onPressed: _chatLoading || _callLoading
+                        ? null
+                        : () => _startConsultation('chat'),
+                    icon: _chatLoading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('Chat'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: c.primary,
@@ -402,8 +454,17 @@ class _PriceAndCTA extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.phone_outlined, size: 16),
+                    onPressed: _chatLoading || _callLoading
+                        ? null
+                        : () => _startConsultation('voice'),
+                    icon: _callLoading
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: c.accent),
+                          )
+                        : const Icon(Icons.phone_outlined, size: 16),
                     label: const Text('Call'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),

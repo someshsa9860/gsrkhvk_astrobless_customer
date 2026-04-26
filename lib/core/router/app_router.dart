@@ -22,6 +22,7 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/astrologers/presentation/astrologer_list_screen.dart';
 import '../../features/astrologers/presentation/astrologer_profile_screen.dart';
 import '../../features/consultations/presentation/chat_screen.dart';
+import '../../features/consultations/presentation/call_screen.dart';
 import '../../features/consultations/presentation/chat_list_screen.dart';
 import '../../features/consultations/presentation/call_list_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
@@ -126,6 +127,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/consultation/chat/:id',
         builder: (_, s) => ConsultationChatScreen(
+            consultationId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/consultation/call/:id',
+        builder: (_, s) => ConsultationCallScreen(
             consultationId: s.pathParameters['id']!),
       ),
       GoRoute(path: AppRoutes.puja, builder: (_, __) => const PujaListScreen()),

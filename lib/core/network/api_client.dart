@@ -469,6 +469,25 @@ class ApiClient {
 
   // ─── Consultations ─────────────────────────────────────────────────────────
 
+  /// Requests a new consultation (chat / voice / video) with an astrologer.
+  /// Returns the created consultation map including `id` and `status`.
+  Future<Map<String, dynamic>> requestConsultation({
+    required String astrologerId,
+    required String type,
+  }) async {
+    final res = await post(
+      Endpoints.consultations.request,
+      data: {'astrologerId': astrologerId, 'type': type},
+    );
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Fetches a single consultation by [consultationId].
+  Future<Map<String, dynamic>> fetchConsultation(String consultationId) async {
+    final res = await get(Endpoints.consultations.detail(consultationId));
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
   /// Ends an active consultation from the customer side.
   Future<void> endConsultation(String consultationId, {String reason = 'customerEnded'}) async {
     await post(Endpoints.consultations.end(consultationId), data: {'reason': reason});
