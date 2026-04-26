@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/widgets/banner_carousel.dart';
+import '../../home/data/home_repository.dart';
 
-class PujaListScreen extends StatelessWidget {
+class PujaListScreen extends ConsumerWidget {
   const PujaListScreen({super.key});
 
   static const _pujas = [
@@ -15,7 +18,7 @@ class PujaListScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
 
@@ -27,6 +30,7 @@ class PujaListScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
+          BannerCarousel(bannersProvider: pujaListBannersProvider),
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             padding: const EdgeInsets.all(16),

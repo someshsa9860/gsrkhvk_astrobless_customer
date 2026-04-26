@@ -127,6 +127,9 @@ final class _WalletEndpoints {
 
   /// `GET` – List of payment providers enabled for the current platform/region.
   String get providers => '/wallet/providers';
+
+  /// `POST` – Verify a Google Play or Apple IAP purchase and credit the wallet.
+  String get iapTopup => '/wallet/topup/iap';
 }
 
 // ─── Kundli ────────────────────────────────────────────────────────────────

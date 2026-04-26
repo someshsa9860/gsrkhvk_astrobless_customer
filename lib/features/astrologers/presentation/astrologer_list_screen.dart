@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/widgets/banner_carousel.dart';
+import '../../home/data/home_repository.dart';
 import '../data/astrologers_repository.dart';
 import '../domain/astrologer_models.dart';
 
@@ -100,6 +102,7 @@ class _AstrologerListScreenState extends ConsumerState<AstrologerListScreen> {
       ),
       body: Column(
         children: [
+          BannerCarousel(bannersProvider: astrologerListBannersProvider),
           _FilterChips(isOnline: isOnline, specialty: specialty),
           Expanded(
             child: astrologersAsync.when(

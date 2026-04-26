@@ -13,7 +13,11 @@ class HomeRepository {
 
   /// Fetches active promotional banners for the `home` placement.
   Future<List<HomeBanner>> fetchBanners() async {
-    final list = await _client.fetchBanners(placement: 'home');
+    return _fetchBannersForPlacement('home');
+  }
+
+  Future<List<HomeBanner>> _fetchBannersForPlacement(String placement) async {
+    final list = await _client.fetchBanners(placement: placement);
     return list.map((e) => HomeBanner.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -44,6 +48,21 @@ final homeRepositoryProvider = Provider<HomeRepository>((ref) {
 
 final bannersProvider = FutureProvider<List<HomeBanner>>((ref) {
   return ref.read(homeRepositoryProvider).fetchBanners();
+});
+
+final astrologerListBannersProvider = FutureProvider<List<HomeBanner>>((ref) {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo._fetchBannersForPlacement('astrologerListTop');
+});
+
+final walletBannersProvider = FutureProvider<List<HomeBanner>>((ref) {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo._fetchBannersForPlacement('walletScreen');
+});
+
+final pujaListBannersProvider = FutureProvider<List<HomeBanner>>((ref) {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo._fetchBannersForPlacement('pujaList');
 });
 
 final trendingAstrologersProvider = FutureProvider<List<TrendingAstrologer>>((ref) {
