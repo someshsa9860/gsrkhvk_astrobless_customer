@@ -64,18 +64,22 @@ class BillingTick {
 
 class SocketService {
   io.Socket? _socket;
+  io.Socket? _presenceSocket;
 
   final _newMessageCtrl = StreamController<ChatMessage>.broadcast();
   final _billingTickCtrl = StreamController<BillingTick>.broadcast();
   final _consultationEndedCtrl = StreamController<Map<String, dynamic>>.broadcast();
   final _connectionCtrl = StreamController<SocketConnectionState>.broadcast();
   final _lowBalanceCtrl = StreamController<Map<String, dynamic>>.broadcast();
+  final _presenceUpdateCtrl = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<ChatMessage> get onNewMessage => _newMessageCtrl.stream;
   Stream<BillingTick> get onBillingTick => _billingTickCtrl.stream;
   Stream<Map<String, dynamic>> get onConsultationEnded => _consultationEndedCtrl.stream;
   Stream<SocketConnectionState> get onConnectionChanged => _connectionCtrl.stream;
   Stream<Map<String, dynamic>> get onLowBalance => _lowBalanceCtrl.stream;
+  // Broadcasts { astrologerId, isOnline, timestamp } when astrologer presence changes
+  Stream<Map<String, dynamic>> get onPresenceUpdate => _presenceUpdateCtrl.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
@@ -143,9 +147,44 @@ class SocketService {
         debugPrint('[Socket] billing:lowBalance parse error: $e');
       }
     });
+
+    _connectPresence(accessToken);
+  }
+
+  void _connectPresence(String accessToken) {
+    _presenceSocket?.disconnect();
+
+    _presenceSocket = io.io(
+      '${AppConfig.wsBaseUrl}/presence',
+      io.OptionBuilder()
+          .setTransports(['websocket'])
+          .setAuth({'token': accessToken})
+          .enableAutoConnect()
+          .setReconnectionAttempts(10)
+          .setReconnectionDelay(3000)
+          .build(),
+    );
+
+    _presenceSocket!.onConnect((_) {
+      debugPrint('[Presence] subscribed to astrologer presence updates');
+    });
+
+    _presenceSocket!.onConnectError((e) {
+      debugPrint('[Presence] connect error: $e');
+    });
+
+    _presenceSocket!.on('presence:update', (data) {
+      try {
+        _presenceUpdateCtrl.add(_toMap(data));
+      } catch (e) {
+        debugPrint('[Presence] presence:update parse error: $e');
+      }
+    });
   }
 
   void disconnect() {
+    _presenceSocket?.disconnect();
+    _presenceSocket = null;
     _socket?.disconnect();
     _socket = null;
   }
@@ -196,6 +235,7 @@ class SocketService {
     _consultationEndedCtrl.close();
     _connectionCtrl.close();
     _lowBalanceCtrl.close();
+    _presenceUpdateCtrl.close();
   }
 
   Map<String, dynamic> _toMap(dynamic data) {
