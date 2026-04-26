@@ -28,6 +28,10 @@ import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/puja/presentation/puja_list_screen.dart';
 import '../../features/astromall/presentation/astromall_screen.dart';
 import '../../features/support/presentation/support_screen.dart';
+import '../../features/support/presentation/ticket_detail_screen.dart';
+import '../../features/addresses/presentation/address_list_screen.dart';
+import '../../features/addresses/presentation/add_address_screen.dart';
+import '../../features/addresses/domain/address_models.dart';
 import '../../features/referral/presentation/referral_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -127,6 +131,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.puja, builder: (_, __) => const PujaListScreen()),
       GoRoute(path: AppRoutes.astromall, builder: (_, __) => const AstromallScreen()),
       GoRoute(path: AppRoutes.support, builder: (_, __) => const SupportScreen()),
+      GoRoute(
+        path: '/support/tickets/:id',
+        builder: (_, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!),
+      ),
+      GoRoute(path: AppRoutes.addresses, builder: (_, __) => const AddressListScreen()),
+      GoRoute(path: AppRoutes.addressAdd, builder: (_, __) => const AddAddressScreen()),
+      GoRoute(
+        path: '/addresses/:id/edit',
+        builder: (_, s) {
+          final address = s.extra;
+          return AddAddressScreen(
+            existing: address is CustomerAddress ? address : null,
+          );
+        },
+      ),
       GoRoute(path: AppRoutes.referral, builder: (_, __) => const ReferralScreen()),
     ],
   );

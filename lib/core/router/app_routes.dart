@@ -66,4 +66,17 @@ abstract final class AppRoutes {
 
   static const profile = '/profile';
   static const profileEdit = '/profile/edit';
+
+  // ─── Addresses ───────────────────────────────────────────────────────────
+
+  static const addresses = '/addresses';
+  static const addressAdd = '/addresses/add';
+
+  /// `/addresses/:id/edit`
+  static String addressEdit(String id) => '/addresses/$id/edit';
+
+  // ─── Support Tickets ─────────────────────────────────────────────────────
+
+  /// `/support/tickets/:id`
+  static String supportTicketDetail(String id) => '/support/tickets/$id';
 }

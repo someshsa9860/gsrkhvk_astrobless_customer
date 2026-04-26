@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_theme_colors.dart';
+import '../data/support_repository.dart';
+import '../domain/support_models.dart';
+import 'new_ticket_screen.dart';
 
-class SupportScreen extends StatelessWidget {
+class SupportScreen extends ConsumerWidget {
   const SupportScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
+    final asyncTickets = ref.watch(ticketsNotifierProvider);
 
     return Scaffold(
       backgroundColor: c.bg,
@@ -16,279 +23,222 @@ class SupportScreen extends StatelessWidget {
         backgroundColor: c.bg,
         title: const Text('Help & Support'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [c.primary.withValues(alpha: 0.15), c.accent.withValues(alpha: 0.08)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: c.primary.withValues(alpha: 0.2)),
-            ),
-            child: Row(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final created = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(builder: (_) => const NewTicketScreen()),
+          );
+          if (created == true) {
+            ref.read(ticketsNotifierProvider.notifier).refresh();
+          }
+        },
+        backgroundColor: c.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('New Ticket'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(ticketsNotifierProvider.notifier).refresh(),
+        color: c.primary,
+        backgroundColor: c.card,
+        child: asyncTickets.when(
+          loading: () => ListView(
+            children: List.generate(4, (i) => _TicketSkeleton(c: c)),
+          ),
+          error: (_, __) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('🛎️', style: TextStyle(fontSize: 32)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('We\'re here to help',
-                          style: tt.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text('Avg response time: under 2 hours',
-                          style: tt.labelSmall?.copyWith(color: c.textSecondary)),
-                    ],
-                  ),
+                Icon(Icons.error_outline, size: 48, color: c.error),
+                const SizedBox(height: 12),
+                Text('Could not load tickets', style: tt.bodyLarge),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => ref.refresh(ticketsNotifierProvider),
+                  child: const Text('Retry'),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-
-          Text('Quick Actions', style: tt.titleSmall?.copyWith(color: c.textSecondary)),
-          const SizedBox(height: 10),
-
-          _SupportTile(
-            icon: Icons.add_comment_outlined,
-            label: 'Raise a Ticket',
-            subtitle: 'Create a new support request',
-            color: c.primary,
-            onTap: () => _showNewTicketSheet(context, c, tt),
-          ).animate().fadeIn(delay: 50.ms),
-
-          _SupportTile(
-            icon: Icons.list_alt_outlined,
-            label: 'My Tickets',
-            subtitle: 'Track your open requests',
-            color: c.accent,
-            onTap: () => _showTicketList(context, c, tt),
-          ).animate().fadeIn(delay: 100.ms),
-
-          _SupportTile(
-            icon: Icons.chat_outlined,
-            label: 'Live Chat Support',
-            subtitle: 'Chat with our support team',
-            color: c.success,
-            onTap: () {},
-          ).animate().fadeIn(delay: 150.ms),
-
-          const SizedBox(height: 20),
-          Text('FAQ', style: tt.titleSmall?.copyWith(color: c.textSecondary)),
-          const SizedBox(height: 10),
-
-          ..._faqs.asMap().entries.map((e) => _FaqTile(
-                question: e.value.$1,
-                answer: e.value.$2,
-              ).animate().fadeIn(delay: Duration(milliseconds: 200 + 50 * e.key))),
-        ],
-      ),
-    );
-  }
-
-  void _showNewTicketSheet(BuildContext ctx, AppThemeColors c, TextTheme tt) {
-    showModalBottomSheet<void>(
-      context: ctx,
-      backgroundColor: c.card,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-            left: 20, right: 20, top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('New Support Ticket', style: tt.titleMedium),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Subject',
-                filled: true,
-                fillColor: c.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          data: (tickets) {
+            if (tickets.isEmpty) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('🛎️', style: TextStyle(fontSize: 56)),
+                      const SizedBox(height: 20),
+                      Text('No support tickets yet',
+                          style: tt.titleMedium?.copyWith(color: c.textPrimary)),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap "New Ticket" to get help from our team.\nAvg response time: under 2 hours.',
+                        textAlign: TextAlign.center,
+                        style: tt.bodySmall?.copyWith(color: c.textSecondary),
+                      ),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              itemCount: tickets.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => _TicketCard(
+                ticket: tickets[i],
+                index: i,
+                onTap: () => context.push(AppRoutes.supportTicketDetail(tickets[i].id)),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Describe your issue',
-                filled: true,
-                fillColor: c.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                    content: const Text('Ticket submitted! We\'ll respond within 2 hours.'),
-                    backgroundColor: c.success,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: Colors.white),
-                child: const Text('Submit Ticket'),
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
-
-  void _showTicketList(BuildContext ctx, AppThemeColors c, TextTheme tt) {
-    showModalBottomSheet<void>(
-      context: ctx,
-      backgroundColor: c.card,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('My Tickets', style: tt.titleMedium),
-            const SizedBox(height: 20),
-            Center(
-              child: Column(
-                children: [
-                  Icon(Icons.inbox_outlined,
-                      size: 48, color: c.textSecondary.withValues(alpha: 0.4)),
-                  const SizedBox(height: 12),
-                  Text('No open tickets',
-                      style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static const _faqs = [
-    ('How do I add money to my wallet?', 'Go to Profile → Wallet → Add Money. We support Razorpay, PhonePe, and UPI.'),
-    ('Can I get a refund for a consultation?', 'Yes. If an astrologer disconnects early, the unused balance is refunded within 24 hours.'),
-    ('How are astrologers verified?', 'All astrologers undergo KYC verification and a skills test before being listed.'),
-    ('What if my call drops during consultation?', 'The billing pauses automatically. You can reconnect within 5 minutes.'),
-  ];
 }
 
-class _SupportTile extends StatelessWidget {
-  const _SupportTile({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.color,
+class _TicketCard extends StatelessWidget {
+  const _TicketCard({
+    required this.ticket,
+    required this.index,
     required this.onTap,
   });
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
+
+  final SupportTicket ticket;
+  final int index;
   final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tt = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: c.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.border),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(label,
-            style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle,
-            style: tt.labelSmall?.copyWith(color: c.textSecondary)),
-        trailing: Icon(Icons.chevron_right,
-            color: c.textSecondary.withValues(alpha: 0.5), size: 18),
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      ),
-    );
+  Color _statusColor(String status, AppThemeColors c) => switch (status) {
+        'open' => c.primary,
+        'inProgress' => c.accent,
+        'waitingOnUser' => c.warning,
+        'resolved' => c.success,
+        _ => c.textSecondary,
+      };
+
+  Color _priorityColor(String priority, AppThemeColors c) => switch (priority) {
+        'urgent' => c.error,
+        'high' => c.warning,
+        _ => c.accent,
+      };
+
+  String _formatDate(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
-}
-
-class _FaqTile extends StatefulWidget {
-  const _FaqTile({required this.question, required this.answer});
-  final String question;
-  final String answer;
-
-  @override
-  State<_FaqTile> createState() => _FaqTileState();
-}
-
-class _FaqTileState extends State<_FaqTile> {
-  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final tt = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: c.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.border),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => setState(() => _expanded = !_expanded),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(widget.question,
-                        style: tt.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
+    final statusColor = _statusColor(ticket.status, c);
+    final priorityColor = _priorityColor(ticket.priority, c);
+
+    final statusLabel = switch (ticket.status) {
+      'inProgress' => 'In Progress',
+      'waitingOnUser' => 'Waiting',
+      String s => s[0].toUpperCase() + s.substring(1),
+    };
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: c.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    ticket.subject,
+                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: c.textSecondary,
-                    size: 20,
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                   ),
-                ],
-              ),
-              if (_expanded) ...[
-                const SizedBox(height: 8),
-                Text(widget.answer,
-                    style: tt.bodySmall?.copyWith(color: c.textSecondary)),
+                  child: Text(statusLabel,
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
+                ),
               ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text(ticket.ticketNumber,
+                    style: tt.labelSmall?.copyWith(color: c.textSecondary, fontFamily: 'monospace')),
+                const SizedBox(width: 8),
+                Container(
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(color: priorityColor, shape: BoxShape.circle)),
+                const SizedBox(width: 4),
+                Text(ticket.priority,
+                    style: tt.labelSmall?.copyWith(color: priorityColor)),
+                const Spacer(),
+                Text(_formatDate(ticket.createdAt),
+                    style: tt.labelSmall?.copyWith(color: c.textSecondary)),
+              ],
+            ),
+            if (ticket.messages.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                    color: c.surface, borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  ticket.messages.last.body,
+                  style: tt.labelSmall?.copyWith(color: c.textSecondary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
-          ),
+          ],
         ),
-      ),
+      ).animate(delay: Duration(milliseconds: index * 60)).fadeIn().slideY(begin: 0.08),
     );
   }
+}
+
+class _TicketSkeleton extends StatelessWidget {
+  const _TicketSkeleton({required this.c});
+  final AppThemeColors c;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: c.border),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(height: 14, width: 220,
+              decoration: BoxDecoration(color: c.border, borderRadius: BorderRadius.circular(6))),
+          const SizedBox(height: 8),
+          Container(height: 10, width: 120,
+              decoration: BoxDecoration(color: c.border, borderRadius: BorderRadius.circular(6))),
+        ]),
+      );
 }

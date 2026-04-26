@@ -113,6 +113,11 @@ class _ProfileBody extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.wallet),
           ),
           _MenuItem(
+            icon: Icons.location_on_outlined,
+            label: 'Saved Addresses',
+            onTap: () => context.push(AppRoutes.addresses),
+          ),
+          _MenuItem(
             icon: Icons.history,
             label: 'Consultation History',
             onTap: () => context.go(AppRoutes.history),

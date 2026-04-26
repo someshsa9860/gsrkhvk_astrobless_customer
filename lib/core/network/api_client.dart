@@ -546,4 +546,91 @@ class ApiClient {
     );
     return res.data['data'] as List<dynamic>? ?? [];
   }
+
+  // ── Addresses ──────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchAddresses() async {
+    final res = await get(Endpoints.addresses.list);
+    return (res.data['data'] as List<dynamic>?) ?? [];
+  }
+
+  Future<Map<String, dynamic>> createAddress({
+    required String label,
+    required String line1,
+    String? line2,
+    required String city,
+    required String state,
+    required String pincode,
+    required String country,
+    bool isDefault = false,
+  }) async {
+    final res = await post(Endpoints.addresses.create, data: {
+      'label': label,
+      'line1': line1,
+      if (line2 != null) 'line2': line2,
+      'city': city,
+      'state': state,
+      'pincode': pincode,
+      'country': country,
+      'isDefault': isDefault,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateAddress(String id, Map<String, dynamic> fields) async {
+    final res = await patch(Endpoints.addresses.update(id), data: fields);
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> deleteAddress(String id) async {
+    await delete(Endpoints.addresses.delete(id));
+  }
+
+  Future<void> setDefaultAddress(String id) async {
+    await post(Endpoints.addresses.setDefault(id));
+  }
+
+  // ── Support Tickets ────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> fetchSupportTickets({
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final res = await get(Endpoints.support.list, queryParameters: {
+      'page': page,
+      'limit': limit,
+      if (status != null) 'status': status,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchSupportTicket(String id) async {
+    final res = await get(Endpoints.support.detail(id));
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createSupportTicket({
+    required String category,
+    required String subject,
+    required String description,
+    String? linkedConsultationId,
+  }) async {
+    final res = await post(Endpoints.support.create, data: {
+      'category': category,
+      'subject': subject,
+      'description': description,
+      if (linkedConsultationId != null) 'linkedConsultationId': linkedConsultationId,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> addSupportTicketMessage(String ticketId, String body) async {
+    final res = await post(Endpoints.support.addMessage(ticketId), data: {'body': body});
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> closeSupportTicket(String ticketId) async {
+    await post(Endpoints.support.close(ticketId));
+  }
 }

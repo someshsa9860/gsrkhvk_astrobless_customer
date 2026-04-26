@@ -44,6 +44,12 @@ abstract final class Endpoints {
   /// Customer profile routes (`/profile`).
   static const profile = _ProfileEndpoints._();
 
+  /// Saved delivery address routes (`/addresses/*`).
+  static const addresses = _AddressEndpoints._();
+
+  /// Support ticket routes (`/support/*`).
+  static const support = _SupportEndpoints._();
+
   /// Image upload route (`/upload/*`).
   static const uploads = _UploadEndpoints._();
 
@@ -300,4 +306,49 @@ final class _PublicEndpoints {
 
   /// `GET` – Current brand theme colors.
   String get theme => '/settings/theme';
+}
+
+// ─── Addresses ─────────────────────────────────────────────────────────────
+
+final class _AddressEndpoints {
+  const _AddressEndpoints._();
+
+  /// `GET` – List all saved delivery addresses.
+  String get list => '/addresses';
+
+  /// `POST` – Create a new address.
+  String get create => '/addresses';
+
+  /// `GET` – Fetch a single address by [id].
+  String detail(String id) => '/addresses/$id';
+
+  /// `PATCH` – Update an address by [id].
+  String update(String id) => '/addresses/$id';
+
+  /// `DELETE` – Delete an address by [id].
+  String delete(String id) => '/addresses/$id';
+
+  /// `POST` – Set address as default.
+  String setDefault(String id) => '/addresses/$id/set-default';
+}
+
+// ─── Support Tickets ───────────────────────────────────────────────────────
+
+final class _SupportEndpoints {
+  const _SupportEndpoints._();
+
+  /// `POST` – Create a new support ticket.
+  String get create => '/support/tickets';
+
+  /// `GET` – List my support tickets.
+  String get list => '/support/tickets';
+
+  /// `GET` – Get a single support ticket by [id].
+  String detail(String id) => '/support/tickets/$id';
+
+  /// `POST` – Post a reply message to a ticket.
+  String addMessage(String id) => '/support/tickets/$id/messages';
+
+  /// `POST` – Close a support ticket.
+  String close(String id) => '/support/tickets/$id/close';
 }
