@@ -5,12 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/format_utils.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../astrologers/data/astrologer_search_notifier.dart';
+import '../../astrologers/data/astrologers_repository.dart';
 import '../../astrologers/domain/astrologer_models.dart';
-import '../data/consultations_repository.dart';
-import '../domain/consultation_models.dart';
 
 class ChatListScreen extends ConsumerStatefulWidget {
   const ChatListScreen({super.key});
@@ -38,6 +36,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   }
 
   void _onScroll() {
+    if (!_isSearching) return;
     if (_scrollCtrl.position.pixels >=
         _scrollCtrl.position.maxScrollExtent - 200) {
       ref.read(astrologerSearchProvider.notifier).loadMore();
@@ -57,9 +56,11 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
+        backgroundColor: c.bg,
         title: const Text('Chat'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
@@ -68,32 +69,31 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             child: TextField(
               controller: _searchCtrl,
               onChanged: _onSearchChanged,
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(color: c.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search astrologers…',
-                hintStyle: const TextStyle(color: AppColors.textDisabled),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textDisabled, size: 20),
+                hintStyle: TextStyle(color: c.textSecondary.withValues(alpha: 0.5)),
+                prefixIcon: Icon(Icons.search, color: c.textSecondary, size: 20),
                 suffixIcon: _isSearching
                     ? IconButton(
-                        icon: const Icon(Icons.close, size: 18,
-                            color: AppColors.textSecondary),
+                        icon: Icon(Icons.close, size: 18, color: c.textSecondary),
                         onPressed: _clearSearch,
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.cardDark,
+                fillColor: c.surface,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.borderDark),
+                  borderSide: BorderSide(color: c.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.borderDark),
+                  borderSide: BorderSide(color: c.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary),
+                  borderSide: BorderSide(color: c.primary),
                 ),
               ),
             ),
@@ -105,83 +105,92 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
               scrollCtrl: _scrollCtrl,
               mode: 'chat',
             )
-          : _ChatConsultationList(),
-      floatingActionButton: _isSearching
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => context.push(AppRoutes.astrologers),
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
-              label: const Text('New Chat',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
-            ),
+          : _ApprovedAstrologerList(scrollCtrl: _scrollCtrl, mode: 'chat'),
     );
   }
 }
 
-// ─── Chat consultation list ───────────────────────────────────────────────
+// ─── Default view: approved astrologer list ──────────────────────────────
 
-class _ChatConsultationList extends ConsumerWidget {
+class _ApprovedAstrologerList extends ConsumerWidget {
+  const _ApprovedAstrologerList({
+    required this.scrollCtrl,
+    required this.mode,
+  });
+
+  final ScrollController scrollCtrl;
+  final String mode;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tt = Theme.of(context).textTheme;
-    final async = ref.watch(consultationsByTypeProvider('chat'));
+    final c = context.colors;
+    final async = ref.watch(astrologersProvider);
 
     return async.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      loading: () => Center(
+        child: CircularProgressIndicator(color: c.primary),
       ),
-      error: (_, __) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off, color: AppColors.textDisabled, size: 40),
-            const SizedBox(height: 12),
-            Text('Could not load chats',
-                style: tt.titleSmall
-                    ?.copyWith(color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => ref.refresh(consultationsByTypeProvider('chat')),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-      data: (items) {
-        if (items.isEmpty) return _EmptyChat();
-
-        final active = items
-            .where((c) => c.status == 'active' || c.status == 'accepted')
-            .toList();
-        final past = items
-            .where((c) =>
-                c.status == 'ended' ||
-                c.status == 'rejected' ||
-                c.status == 'cancelled')
-            .toList();
-
-        return RefreshIndicator(
-          onRefresh: () =>
-              ref.refresh(consultationsByTypeProvider('chat').future),
-          color: AppColors.primary,
-          backgroundColor: AppColors.cardDark,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+      error: (err, stack) {
+        debugPrint('[ChatList] astrologersProvider error: $err');
+        debugPrint('[ChatList] stack: $stack');
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (active.isNotEmpty) ...[
-                _ListHeader('Active', AppColors.accent),
-                ...active.asMap().entries.map((e) =>
-                    _ConsultationCard(c: e.value, index: e.key, isActive: true)),
-                const Divider(color: AppColors.borderDark, height: 24, indent: 16, endIndent: 16),
-              ],
-              if (past.isNotEmpty) ...[
-                _ListHeader('Recent', AppColors.textSecondary),
-                ...past.asMap().entries.map((e) =>
-                    _ConsultationCard(c: e.value, index: e.key, isActive: false)),
-              ],
+              Icon(Icons.cloud_off, color: c.textSecondary.withValues(alpha: 0.5), size: 40),
+              const SizedBox(height: 12),
+              Text('Could not load astrologers',
+                  style: tt.titleSmall?.copyWith(color: c.textSecondary)),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(err.toString(),
+                    style: tt.bodySmall?.copyWith(color: c.error),
+                    textAlign: TextAlign.center),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(astrologersProvider),
+                child: const Text('Retry'),
+              ),
             ],
+          ),
+        );
+      },
+      data: (items) {
+        if (items.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🔭', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 16),
+                Text('No Astrologers Available', style: tt.titleMedium),
+                const SizedBox(height: 8),
+                Text(
+                  'Check back soon',
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary),
+                ),
+              ],
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(astrologersProvider),
+          color: c.primary,
+          backgroundColor: c.card,
+          child: ListView.separated(
+            controller: scrollCtrl,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: items.length,
+            separatorBuilder: (_, __) =>
+                Divider(height: 1, color: c.border, indent: 72),
+            itemBuilder: (_, i) => _AstrologerSearchTile(
+              astrologer: items[i],
+              index: i,
+              mode: mode,
+            ),
           ),
         );
       },
@@ -203,10 +212,11 @@ class _AstrologerSearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final search = ref.watch(astrologerSearchProvider);
 
     if (search.isLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return Center(child: CircularProgressIndicator(color: c.primary));
     }
 
     if (search.items.isEmpty && !search.isLoading) {
@@ -214,16 +224,16 @@ class _AstrologerSearchResults extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.person_search, size: 48, color: AppColors.textDisabled),
+            Icon(Icons.person_search, size: 48, color: c.textSecondary.withValues(alpha: 0.5)),
             const SizedBox(height: 12),
             Text(
               search.query.isEmpty ? 'Search for an astrologer' : 'No astrologers found',
-              style: tt.titleSmall?.copyWith(color: AppColors.textSecondary),
+              style: tt.titleSmall?.copyWith(color: c.textSecondary),
             ),
             if (search.query.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text('Try a different name or specialty',
-                  style: tt.bodySmall?.copyWith(color: AppColors.textDisabled)),
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary.withValues(alpha: 0.5))),
             ],
           ],
         ),
@@ -235,17 +245,16 @@ class _AstrologerSearchResults extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: search.items.length + (search.isLoadingMore ? 1 : 0),
       separatorBuilder: (_, __) =>
-          const Divider(height: 1, color: AppColors.borderDark, indent: 72),
+          Divider(height: 1, color: c.border, indent: 72),
       itemBuilder: (_, i) {
         if (i == search.items.length) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
+          return Padding(
+            padding: const EdgeInsets.all(16),
             child: Center(
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.primary),
+                child: CircularProgressIndicator(strokeWidth: 2, color: c.primary),
               ),
             ),
           );
@@ -274,88 +283,144 @@ class _AstrologerSearchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final price = mode == 'chat'
         ? astrologer.pricePerMinChat
         : astrologer.pricePerMinCall;
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                  backgroundImage: astrologer.profileImageUrl != null
-                      ? CachedNetworkImageProvider(astrologer.profileImageUrl!)
-                      : null,
-                  child: astrologer.profileImageUrl == null
-                      ? const Icon(Icons.person,
-                          color: AppColors.primary, size: 24)
-                      : null,
-                ),
-                if (astrologer.isOnline)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 11,
-                      height: 11,
-                      decoration: BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: AppColors.bgDark, width: 1.5),
-                      ),
-                    ),
-                  ),
-              ],
+            // ── Left: image strip ──────────────────────────────────────
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              child: SizedBox(
+                width: 100,
+                height: 130,
+                child: astrologer.profileImageUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: astrologer.profileImageUrl!,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => _AvatarPlaceholder(c: c),
+                      )
+                    : _AvatarPlaceholder(c: c),
+              ),
             ),
-            const SizedBox(width: 12),
+            // ── Right: details ─────────────────────────────────────────
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(astrologer.displayName,
-                      style: tt.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  if (astrologer.specialties.isNotEmpty)
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            astrologer.displayName,
+                            style: tt.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: c.textPrimary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (astrologer.isOnline)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: c.success,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (astrologer.specialties.isNotEmpty)
+                      Text(
+                        astrologer.specialties.take(3).join(' · '),
+                        style: tt.labelSmall?.copyWith(color: c.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.star_rounded, size: 13, color: c.accent),
+                        const SizedBox(width: 3),
+                        Text(astrologer.ratingAvg.toStringAsFixed(1),
+                            style: tt.labelSmall?.copyWith(
+                                color: c.accent, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 4),
+                        Text('(${astrologer.ratingCount})',
+                            style: tt.labelSmall?.copyWith(
+                                color: c.textSecondary.withValues(alpha: 0.6),
+                                fontSize: 10)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      astrologer.specialties.take(3).join(' · '),
-                      style: tt.labelSmall
-                          ?.copyWith(color: AppColors.textSecondary),
+                      '${astrologer.experienceYears} yrs exp  ·  ${astrologer.languages.take(2).join(', ')}',
+                      style: tt.labelSmall?.copyWith(
+                          color: c.textSecondary.withValues(alpha: 0.7),
+                          fontSize: 10),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          size: 12, color: AppColors.accent),
-                      const SizedBox(width: 3),
-                      Text(astrologer.ratingAvg.toStringAsFixed(1),
-                          style: tt.labelSmall
-                              ?.copyWith(color: AppColors.accent)),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${formatCurrency(price)}/min',
-                        style: tt.labelSmall?.copyWith(
-                            color: AppColors.textDisabled, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '₹${price.toStringAsFixed(0)}/min',
+                              style: tt.labelMedium?.copyWith(
+                                  color: c.accent,
+                                  fontWeight: FontWeight.w800),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        _ActionButton(astrologer: astrologer, mode: mode),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-            _ActionButton(astrologer: astrologer, mode: mode),
           ],
         ),
       ),
-    ).animate().fadeIn(delay: Duration(milliseconds: 30 * index));
+    ).animate().fadeIn(delay: Duration(milliseconds: 40 * index));
+  }
+}
+
+class _AvatarPlaceholder extends StatelessWidget {
+  const _AvatarPlaceholder({required this.c});
+  final AppThemeColors c;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: c.primary.withValues(alpha: 0.12),
+      child: Center(
+        child: Icon(Icons.person, color: c.primary.withValues(alpha: 0.5), size: 40),
+      ),
+    );
   }
 }
 
@@ -366,43 +431,41 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     if (astrologer.isBusy) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.12),
+          color: c.error.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text('Busy',
-            style: TextStyle(
-                color: AppColors.error, fontSize: 11, fontWeight: FontWeight.w600)),
+        child: Text('Busy',
+            style: TextStyle(color: c.error, fontSize: 11, fontWeight: FontWeight.w600)),
       );
     }
     if (!astrologer.isOnline) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: c.surface,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text('Offline',
+        child: Text('Offline',
             style: TextStyle(
-                color: AppColors.textDisabled,
+                color: c.textSecondary.withValues(alpha: 0.7),
                 fontSize: 11,
                 fontWeight: FontWeight.w600)),
       );
     }
     final label = mode == 'chat' ? 'Chat' : 'Call';
-    final icon = mode == 'chat'
-        ? Icons.chat_bubble_outline
-        : Icons.phone_outlined;
+    final icon = mode == 'chat' ? Icons.chat_bubble_outline : Icons.phone_outlined;
     return ElevatedButton.icon(
       onPressed: () {
         Get.snackbar(
           'Coming Soon',
           'Tap the profile to start a consultation',
-          backgroundColor: AppColors.cardDark,
-          colorText: AppColors.textPrimary,
+          backgroundColor: c.card,
+          colorText: c.textPrimary,
           duration: const Duration(seconds: 2),
           snackPosition: SnackPosition.BOTTOM,
           margin: const EdgeInsets.all(12),
@@ -411,153 +474,12 @@ class _ActionButton extends StatelessWidget {
       icon: Icon(icon, size: 13),
       label: Text(label, style: const TextStyle(fontSize: 12)),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
+        backgroundColor: c.primary,
+        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-}
-
-// ─── Shared helpers ───────────────────────────────────────────────────────
-
-class _ListHeader extends StatelessWidget {
-  const _ListHeader(this.label, this.color);
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Text(label,
-          style: Theme.of(context)
-              .textTheme
-              .labelMedium
-              ?.copyWith(color: color, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-class _ConsultationCard extends StatelessWidget {
-  const _ConsultationCard({
-    required this.c,
-    required this.index,
-    required this.isActive,
-  });
-
-  final Consultation c;
-  final int index;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-
-    return InkWell(
-      onTap: () => context.push(AppRoutes.consultationChat(c.id)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                  backgroundImage: c.astrologerImageUrl != null
-                      ? CachedNetworkImageProvider(c.astrologerImageUrl!)
-                      : null,
-                  child: c.astrologerImageUrl == null
-                      ? const Icon(Icons.person, color: AppColors.primary, size: 26)
-                      : null,
-                ),
-                if (isActive)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.bgDark, width: 2),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(c.astrologerName,
-                      style: tt.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(
-                    isActive ? 'Session in progress' : timeAgo(c.createdAt),
-                    style: tt.labelSmall?.copyWith(
-                      color: isActive
-                          ? AppColors.success
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (c.totalCharged > 0 && !isActive)
-              Text(
-                formatCurrency(c.totalCharged),
-                style: tt.bodySmall?.copyWith(
-                  color: AppColors.textDisabled,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            if (isActive) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text('Resume',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: Duration(milliseconds: 40 * index));
-  }
-}
-
-class _EmptyChat extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('💬', style: TextStyle(fontSize: 48)),
-          const SizedBox(height: 16),
-          Text('No Chats Yet', style: tt.titleMedium),
-          const SizedBox(height: 8),
-          Text(
-            'Search above to find an astrologer\nand start a chat consultation',
-            style: tt.bodySmall?.copyWith(color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }

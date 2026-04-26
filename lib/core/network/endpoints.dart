@@ -35,6 +35,9 @@ abstract final class Endpoints {
   /// Consultation routes (`/consultations/*`).
   static const consultations = _ConsultationEndpoints._();
 
+  /// Puja booking routes (`/puja/*`).
+  static const puja = _PujaEndpoints._();
+
   /// In-app notification routes (`/notifications/*`).
   static const notifications = _NotificationEndpoints._();
 
@@ -137,11 +140,36 @@ final class _KundliEndpoints {
   /// `POST` – Create a new Kundli profile (birth details).
   String get createProfile => '/kundli/profiles';
 
+  /// `PATCH` – Update an existing Kundli profile by [id].
+  String updateProfile(String id) => '/kundli/profiles/$id';
+
   /// `DELETE` – Delete a Kundli profile by [id].
   String deleteProfile(String id) => '/kundli/profiles/$id';
 
   /// `GET` – Fetch or generate a full Kundli report for profile [id].
   String report(String profileId) => '/kundli/profiles/$profileId/report';
+
+  /// `GET` – Fetch Ashtakvarga bindus + chart image for a planet.
+  /// Query param: `planet` (Sun|Moon|Mars|Mercury|Jupiter|Venus|Saturn|total).
+  /// Not cached — fetched fresh each call.
+  String ashtakvarga(String profileId) => '/kundli/profiles/$profileId/ashtakvarga';
+
+  /// `GET` – Fetch divisional chart planet positions.
+  /// Query param: `div` (D1|D2|D9|D10|...). Not cached.
+  String divisional(String profileId) => '/kundli/profiles/$profileId/divisional';
+
+  /// `GET` – Full Vimshottari dasha hierarchy (maha + antar). Not cached.
+  String dasha(String profileId) => '/kundli/profiles/$profileId/dasha';
+
+  /// `GET` – Specific sub-dasha levels (paryantar/sookshma/prana).
+  /// Query params: md, ad, pd, sd (planet names). Not cached.
+  String dashaSpecific(String profileId) => '/kundli/profiles/$profileId/dasha/specific';
+
+  /// `POST` – Compute Ashtakoot compatibility between two profiles. Body: { profileAId, profileBId }.
+  String get match => '/kundli/match';
+
+  /// `GET` – List all previous kundli match results.
+  String get matches => '/kundli/matches';
 }
 
 // ─── AI Chat ───────────────────────────────────────────────────────────────
@@ -174,6 +202,22 @@ final class _ConsultationEndpoints {
 
   /// `POST` – End an active consultation.
   String end(String id) => '/consultations/$id/end';
+}
+
+// ─── Puja ──────────────────────────────────────────────────────────────────
+
+final class _PujaEndpoints {
+  const _PujaEndpoints._();
+
+  /// `GET` – Paginated list of the customer's puja bookings.
+  /// Query params: `status`, `page`, `limit`.
+  String get bookings => '/puja/bookings';
+
+  /// `GET` – Detail of a single puja booking.
+  String bookingDetail(String id) => '/puja/bookings/$id';
+
+  /// `POST` – Cancel a puja booking.
+  String cancelBooking(String id) => '/puja/bookings/$id/cancel';
 }
 
 // ─── Profile ───────────────────────────────────────────────────────────────

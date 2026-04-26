@@ -37,14 +37,22 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 void _applyCertPinning(Dio dio) {
-  if (!AppConfig.enableCertPinning || AppConfig.certSha256Fingerprint.isEmpty) return;
-  final expected = AppConfig.certSha256Fingerprint.toLowerCase().replaceAll(':', '');
   (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-    return HttpClient()
-      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
-        final fingerprint = sha256.convert(cert.der).toString();
-        return fingerprint == expected;
-      };
+    final client = HttpClient();
+    if (kDebugMode) {
+      // Trust all certs in debug — avoids self-signed / chain issues on simulator
+      client.badCertificateCallback = (_, __, ___) => true;
+      return client;
+    }
+    if (!AppConfig.enableCertPinning || AppConfig.certSha256Fingerprint.isEmpty) {
+      return client;
+    }
+    final expected = AppConfig.certSha256Fingerprint.toLowerCase().replaceAll(':', '');
+    client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+      final fingerprint = sha256.convert(cert.der).toString();
+      return fingerprint == expected;
+    };
+    return client;
   };
 }
 

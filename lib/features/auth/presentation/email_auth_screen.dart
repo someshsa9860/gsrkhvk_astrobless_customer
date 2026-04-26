@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import 'auth_controller.dart';
@@ -63,8 +63,6 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
     if (mounted) setState(() => _passwordStrength = score);
   }
 
-  // ─── Login: send OTP ─────────────────────────────────────────────────────
-
   Future<void> _loginSendOtp() async {
     if (!_loginFormKey.currentState!.validate()) return;
     final email = _loginEmailCtrl.text.trim();
@@ -75,8 +73,6 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
       context.push(AppRoutes.authOtp, extra: {'phone': email, 'type': 'email'});
     }
   }
-
-  // ─── Register ────────────────────────────────────────────────────────────
 
   Future<void> _register() async {
     if (!_regFormKey.currentState!.validate()) return;
@@ -93,8 +89,6 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
     }
   }
 
-  // ─── Forgot password ─────────────────────────────────────────────────────
-
   Future<void> _forgotPassword() async {
     final email = _loginEmailCtrl.text.trim();
     if (email.isEmpty || Validators.email(email) != null) {
@@ -109,9 +103,10 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
   }
 
   void _showSnack(String msg, {bool isError = false}) {
+    final c = context.colors;
     Get.showSnackbar(GetSnackBar(
       message: msg,
-      backgroundColor: isError ? AppColors.error : AppColors.success,
+      backgroundColor: isError ? c.error : c.success,
       borderRadius: 12,
       margin: const EdgeInsets.all(16),
       duration: const Duration(seconds: 3),
@@ -123,6 +118,7 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     ref.listen(authControllerProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
@@ -135,30 +131,30 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: c.textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Email Sign In',
-            style: tt.titleMedium?.copyWith(color: AppColors.textPrimary)),
+            style: tt.titleMedium?.copyWith(color: c.textPrimary)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 24),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: c.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: TabBar(
               controller: _tabCtrl,
               indicator: BoxDecoration(
-                color: AppColors.primary,
+                color: c.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               labelColor: Colors.white,
-              unselectedLabelColor: AppColors.textSecondary,
+              unselectedLabelColor: c.textSecondary,
               labelStyle: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600),
               tabs: const [
                 Tab(text: 'Sign In'),
@@ -196,8 +192,6 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
   }
 }
 
-// ─── Login tab ────────────────────────────────────────────────────────────────
-
 class _LoginTab extends StatelessWidget {
   const _LoginTab({
     required this.formKey,
@@ -216,6 +210,7 @@ class _LoginTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
       child: Form(
@@ -225,11 +220,10 @@ class _LoginTab extends StatelessWidget {
           children: [
             Text('Sign in with email',
                 style: tt.titleLarge?.copyWith(
-                    color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+                    color: c.textPrimary, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             Text("We'll send you a one-time code",
-                style:
-                    tt.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
             const SizedBox(height: 32),
             _FieldLabel('Email Address'),
             const SizedBox(height: 8),
@@ -254,8 +248,8 @@ class _LoginTab extends StatelessWidget {
             Center(
               child: TextButton(
                 onPressed: onForgotPassword,
-                style: TextButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary),
+                style:
+                    TextButton.styleFrom(foregroundColor: c.textSecondary),
                 child: const Text('Forgot password?'),
               ),
             ),
@@ -265,8 +259,6 @@ class _LoginTab extends StatelessWidget {
     );
   }
 }
-
-// ─── Register tab ─────────────────────────────────────────────────────────────
 
 class _RegisterTab extends StatelessWidget {
   const _RegisterTab({
@@ -294,6 +286,7 @@ class _RegisterTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
       child: Form(
@@ -303,11 +296,10 @@ class _RegisterTab extends StatelessWidget {
           children: [
             Text('Create your account',
                 style: tt.titleLarge?.copyWith(
-                    color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+                    color: c.textPrimary, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             Text('Join millions seeking cosmic guidance',
-                style:
-                    tt.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
             const SizedBox(height: 32),
             _FieldLabel('Full Name'),
             const SizedBox(height: 8),
@@ -352,7 +344,7 @@ class _RegisterTab extends StatelessWidget {
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
                     size: 20,
-                    color: AppColors.textSecondary,
+                    color: c.textSecondary,
                   ),
                   onPressed: onToggleObscure,
                 ),
@@ -370,8 +362,8 @@ class _RegisterTab extends StatelessWidget {
             Center(
               child: Text(
                 'By registering, you agree to our\nTerms of Service and Privacy Policy',
-                style:
-                    tt.labelSmall?.copyWith(color: AppColors.textDisabled),
+                style: tt.labelSmall
+                    ?.copyWith(color: c.textSecondary.withValues(alpha: 0.5)),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -382,18 +374,17 @@ class _RegisterTab extends StatelessWidget {
   }
 }
 
-// ─── Shared widgets ───────────────────────────────────────────────────────────
-
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel(this.text);
   final String text;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Text(
       text,
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppColors.textSecondary,
+            color: c.textSecondary,
             letterSpacing: 0.3,
           ),
     );
@@ -407,8 +398,9 @@ class _PasswordStrengthBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (strength == 0) return const SizedBox.shrink();
+    final c = context.colors;
 
-    final colors = [Colors.transparent, AppColors.error, AppColors.warning, AppColors.success];
+    final colors = [Colors.transparent, c.error, c.accent, c.success];
     final labels = ['', 'Weak', 'Medium', 'Strong'];
     final color = colors[strength.clamp(0, 3)];
     final label = labels[strength.clamp(0, 3)];
@@ -424,7 +416,7 @@ class _PasswordStrengthBar extends StatelessWidget {
                 margin: EdgeInsets.only(right: i < 2 ? 4 : 0),
                 height: 4,
                 decoration: BoxDecoration(
-                  color: filled ? color : AppColors.borderDark,
+                  color: filled ? color : c.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

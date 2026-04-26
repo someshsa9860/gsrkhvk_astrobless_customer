@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+import '../theme/app_theme_colors.dart';
 
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -21,7 +21,7 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? AppColors.primary;
+    final effectiveColor = color ?? context.colors.primary;
 
     if (outlined) {
       return SizedBox(
@@ -31,7 +31,8 @@ class AppButton extends StatelessWidget {
           onPressed: loading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: effectiveColor),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
           ),
           child: _child(effectiveColor),
         ),
@@ -46,7 +47,8 @@ class AppButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: effectiveColor,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
         child: _child(Colors.white),
@@ -68,10 +70,14 @@ class AppButton extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: textColor),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+          Text(label,
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, color: textColor)),
         ],
       );
     }
-    return Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: textColor));
+    return Text(label,
+        style:
+            TextStyle(fontWeight: FontWeight.w600, color: textColor));
   }
 }

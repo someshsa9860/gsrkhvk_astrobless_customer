@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.shell});
@@ -28,10 +28,11 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceDark,
-        border: Border(top: BorderSide(color: AppColors.borderDark)),
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border(top: BorderSide(color: c.border)),
       ),
       child: SafeArea(
         child: SizedBox(
@@ -50,8 +51,8 @@ class _BottomNav extends StatelessWidget {
                       Icon(
                         selected ? tab.activeIcon : tab.icon,
                         color: selected
-                            ? AppColors.accent
-                            : AppColors.textDisabled,
+                            ? c.primary
+                            : c.textSecondary.withValues(alpha: 0.5),
                         size: 22,
                       ),
                       const SizedBox(height: 3),
@@ -63,8 +64,8 @@ class _BottomNav extends StatelessWidget {
                               ? FontWeight.w600
                               : FontWeight.w400,
                           color: selected
-                              ? AppColors.accent
-                              : AppColors.textDisabled,
+                              ? c.primary
+                              : c.textSecondary.withValues(alpha: 0.5),
                         ),
                       ),
                     ],

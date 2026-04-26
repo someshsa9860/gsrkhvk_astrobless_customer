@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/horoscope_repository.dart';
 import '../domain/horoscope_models.dart';
 
@@ -32,7 +32,7 @@ const _signs = [
   _Sign('♓', 'Pisces', 'Feb 19 – Mar 20', 'pisces', 'water'),
 ];
 
-// Element → two gradient stop colors
+// Element → two gradient stop colors (intentionally fixed for visual identity)
 List<Color> _elementGradient(String element) => switch (element) {
       'fire' => const [Color(0xFFB71C1C), Color(0xFFFF6D00)],
       'earth' => const [Color(0xFF1B5E20), Color(0xFF00695C)],
@@ -46,7 +46,7 @@ Color _elementAccent(String element) => switch (element) {
       'earth' => const Color(0xFF69F0AE),
       'air' => const Color(0xFF40C4FF),
       'water' => const Color(0xFFEA80FC),
-      _ => AppColors.accent,
+      _ => const Color(0xFFFFB300),
     };
 
 const _periods = ['daily', 'weekly', 'yearly'];
@@ -88,9 +88,10 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen>
   @override
   Widget build(BuildContext context) {
     final sign = _signs[_signIndex];
+    final c = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       body: Column(
         children: [
           _HoroscopeAppBar(
@@ -118,10 +119,10 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen>
                     decoration: BoxDecoration(
                       color: sel
                           ? accent.withValues(alpha: 0.18)
-                          : AppColors.cardDark,
+                          : c.card,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: sel ? accent : AppColors.borderDark,
+                        color: sel ? accent : c.border,
                         width: sel ? 1.5 : 1,
                       ),
                     ),
@@ -131,15 +132,15 @@ class _HoroscopeScreenState extends ConsumerState<HoroscopeScreen>
                         Text(s.symbol,
                             style: TextStyle(
                                 fontSize: 24,
-                                color: sel ? accent : Colors.white70)),
+                                color: sel ? accent : c.textPrimary.withValues(alpha: 0.7))),
                         const SizedBox(height: 2),
                         Text(s.name,
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: sel ? FontWeight.w600 : FontWeight.normal,
                               color: sel
-                                  ? Colors.white
-                                  : AppColors.textSecondary,
+                                  ? c.textPrimary
+                                  : c.textSecondary,
                             )),
                       ],
                     ),
@@ -174,12 +175,13 @@ class _HoroscopeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           AppBar(
-            backgroundColor: AppColors.bgDark,
+            backgroundColor: c.bg,
             elevation: 0,
             title: Row(
               children: [
@@ -193,10 +195,10 @@ class _HoroscopeAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           TabBar(
             controller: periodTab,
-            indicatorColor: AppColors.accent,
+            indicatorColor: c.accent,
             indicatorWeight: 2.5,
-            labelColor: AppColors.accent,
-            unselectedLabelColor: AppColors.textSecondary,
+            labelColor: c.accent,
+            unselectedLabelColor: c.textSecondary,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             unselectedLabelStyle: const TextStyle(fontSize: 13),
             tabs: List.generate(_periods.length, (i) => Tab(
@@ -229,8 +231,8 @@ class _HoroscopeContent extends ConsumerWidget {
     final async = ref.watch(horoscopeProvider((sign.slug, period)));
 
     return async.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      loading: () => Center(
+        child: CircularProgressIndicator(color: context.colors.primary),
       ),
       error: (_, __) => _HoroscopeBody(
         sign: sign,
@@ -262,6 +264,7 @@ class _HoroscopeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -283,7 +286,7 @@ class _HoroscopeBody extends StatelessWidget {
             icon: '🌟',
             title: 'Overview',
             content: data!.summary!,
-            accentColor: AppColors.accent,
+            accentColor: c.accent,
           ),
           const SizedBox(height: 10),
         ],
@@ -327,7 +330,7 @@ class _HoroscopeBody extends StatelessWidget {
             icon: '✨',
             title: 'General',
             content: data!.general!,
-            accentColor: AppColors.primary,
+            accentColor: c.primary,
           ),
         ],
 
@@ -361,7 +364,7 @@ class _HeroCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       child: Stack(
         children: [
-          // Gradient base
+          // Gradient base (intentionally fixed colors for visual identity)
           Container(
             height: 180,
             decoration: BoxDecoration(
@@ -509,26 +512,27 @@ class _FortuneScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final accent = _elementAccent(sign.element);
     final clamped = score.clamp(1, 5);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: c.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: c.border),
       ),
       child: Row(
         children: [
-          Text('Fortune', style: tt.labelMedium?.copyWith(color: AppColors.textSecondary)),
+          Text('Fortune', style: tt.labelMedium?.copyWith(color: c.textSecondary)),
           const Spacer(),
           ...List.generate(5, (i) => Padding(
             padding: const EdgeInsets.only(left: 4),
             child: Icon(
               i < clamped ? Icons.star_rounded : Icons.star_outline_rounded,
               size: 22,
-              color: i < clamped ? accent : AppColors.borderDark,
+              color: i < clamped ? accent : c.border,
             ),
           )),
           const SizedBox(width: 8),
@@ -561,19 +565,20 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: c.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: c.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Colored left accent bar
+            // Colored left accent bar (intentionally fixed for visual identity)
             Container(width: 4, color: accentColor),
             Expanded(
               child: Padding(
@@ -591,7 +596,7 @@ class _SectionCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(content,
                         style: tt.bodySmall?.copyWith(
-                            color: AppColors.textSecondary, height: 1.6)),
+                            color: c.textSecondary, height: 1.6)),
                   ],
                 ),
               ),
@@ -613,6 +618,7 @@ class _LuckyCharmsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final accent = _elementAccent(sign.element);
 
     final items = <(String, String, String)>[
@@ -628,7 +634,7 @@ class _LuckyCharmsCard extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             accent.withValues(alpha: 0.10),
-            AppColors.cardDark,
+            c.card,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -640,7 +646,7 @@ class _LuckyCharmsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text('⭐', style: const TextStyle(fontSize: 16)),
+            const Text('⭐', style: TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
             Text('Lucky Charms',
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
@@ -661,7 +667,7 @@ class _LuckyCharmsCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(label,
                         style: tt.labelSmall?.copyWith(
-                            color: AppColors.textSecondary, fontSize: 10),
+                            color: c.textSecondary, fontSize: 10),
                         textAlign: TextAlign.center),
                   ],
                 ),
@@ -699,19 +705,20 @@ class _PlanetaryFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final ruler = _rulers[sign.slug] ?? ('☉', 'Sun');
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark.withValues(alpha: 0.5),
+        color: c.surface.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: c.border),
       ),
       child: Row(
         children: [
           Text(ruler.$1,
-              style: const TextStyle(fontSize: 28, color: AppColors.textSecondary)),
+              style: TextStyle(fontSize: 28, color: c.textSecondary)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -724,7 +731,7 @@ class _PlanetaryFooter extends StatelessWidget {
                   '${sign.name} is ruled by ${ruler.$2}, '
                   'which influences your personality and cosmic alignment.',
                   style: tt.labelSmall
-                      ?.copyWith(color: AppColors.textSecondary, height: 1.4),
+                      ?.copyWith(color: c.textSecondary, height: 1.4),
                 ),
               ],
             ),

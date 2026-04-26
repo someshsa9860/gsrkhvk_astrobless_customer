@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../data/kundli_repository.dart';
+import '../domain/kundli_models.dart';
 
 class AddKundliScreen extends ConsumerStatefulWidget {
-  const AddKundliScreen({super.key});
+  const AddKundliScreen({super.key, this.profile});
+
+  /// When non-null, the screen is in edit mode and pre-fills with existing data.
+  final KundliProfile? profile;
 
   @override
   ConsumerState<AddKundliScreen> createState() => _AddKundliScreenState();
@@ -19,9 +24,25 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
   final _placeCtrl = TextEditingController();
   final _timeCtrl = TextEditingController();
   DateTime? _dob;
-  final double _lat = 20.5937;
-  final double _lng = 78.9629;
+  double _lat = 20.5937;
+  double _lng = 78.9629;
   bool _loading = false;
+
+  bool get _isEdit => widget.profile != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEdit) {
+      final p = widget.profile!;
+      _nameCtrl.text = p.name;
+      _placeCtrl.text = p.placeOfBirth;
+      _timeCtrl.text = p.timeOfBirth ?? '';
+      _dob = DateFormat('yyyy-MM-dd').parse(p.dateOfBirth);
+      _lat = p.lat;
+      _lng = p.lng;
+    }
+  }
 
   @override
   void dispose() {
@@ -32,16 +53,17 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
   }
 
   Future<void> _pickDate() async {
+    final c = context.colors;
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(1990),
+      initialDate: _dob ?? DateTime(1990),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.primary,
-            surface: AppColors.cardDark,
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+            primary: c.primary,
+            surface: c.card,
           ),
         ),
         child: child!,
@@ -51,14 +73,19 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
   }
 
   Future<void> _pickTime() async {
+    final c = context.colors;
+    final parts = _timeCtrl.text.split(':');
+    final initial = parts.length == 2
+        ? TimeOfDay(hour: int.tryParse(parts[0]) ?? 0, minute: int.tryParse(parts[1]) ?? 0)
+        : TimeOfDay.now();
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: initial,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.primary,
-            surface: AppColors.cardDark,
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+            primary: c.primary,
+            surface: c.card,
           ),
         ),
         child: child!,
@@ -75,29 +102,50 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_dob == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please select date of birth'),
-        backgroundColor: AppColors.error,
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Please select date of birth'),
+        backgroundColor: context.colors.error,
       ));
       return;
     }
 
     setState(() => _loading = true);
     try {
-      await ref.read(kundliRepositoryProvider).createProfile(
-            name: _nameCtrl.text.trim(),
-            dateOfBirth: DateFormat('yyyy-MM-dd').format(_dob!),
-            timeOfBirth: _timeCtrl.text.trim().isEmpty ? null : _timeCtrl.text.trim(),
-            placeOfBirth: _placeCtrl.text.trim(),
-            lat: _lat,
-            lng: _lng,
-          );
-      if (mounted) context.pop();
+      final KundliProfile saved;
+      if (_isEdit) {
+        saved = await ref.read(kundliRepositoryProvider).updateProfile(
+              id: widget.profile!.id,
+              name: _nameCtrl.text.trim(),
+              dateOfBirth: DateFormat('yyyy-MM-dd').format(_dob!),
+              timeOfBirth: _timeCtrl.text.trim().isEmpty ? null : _timeCtrl.text.trim(),
+              placeOfBirth: _placeCtrl.text.trim(),
+              lat: _lat,
+              lng: _lng,
+            );
+      } else {
+        saved = await ref.read(kundliRepositoryProvider).createProfile(
+              name: _nameCtrl.text.trim(),
+              dateOfBirth: DateFormat('yyyy-MM-dd').format(_dob!),
+              timeOfBirth: _timeCtrl.text.trim().isEmpty ? null : _timeCtrl.text.trim(),
+              placeOfBirth: _placeCtrl.text.trim(),
+              lat: _lat,
+              lng: _lng,
+            );
+      }
+
+      // Invalidate list + any cached report so fresh data is fetched
+      ref.invalidate(kundliProfilesProvider);
+      ref.invalidate(kundliReportProvider(saved.id));
+
+      if (mounted) {
+        // Replace current screen with the report so Back goes straight to list
+        context.pushReplacement(AppRoutes.kundliReport(saved.id));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(e.toString().replaceAll('Exception:', '').trim()),
-          backgroundColor: AppColors.error,
+          backgroundColor: context.colors.error,
         ));
       }
     } finally {
@@ -108,10 +156,11 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
-      appBar: AppBar(title: const Text('Add Kundli Profile')),
+      backgroundColor: c.bg,
+      appBar: AppBar(title: Text(_isEdit ? 'Edit Kundli Profile' : 'Add Kundli Profile')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -122,12 +171,14 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
               Text('Profile Details', style: tt.titleMedium),
               const SizedBox(height: 4),
               Text(
-                'Enter birth details to generate an accurate birth chart',
-                style: tt.bodySmall?.copyWith(color: AppColors.textSecondary),
+                _isEdit
+                    ? 'Update birth details — a new chart will be generated'
+                    : 'Enter birth details to generate an accurate birth chart',
+                style: tt.bodySmall?.copyWith(color: c.textSecondary),
               ),
               const SizedBox(height: 24),
 
-              _label('Name *', tt),
+              _label('Name *', tt, c),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _nameCtrl,
@@ -140,7 +191,7 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
               ),
               const SizedBox(height: 16),
 
-              _label('Date of Birth *', tt),
+              _label('Date of Birth *', tt, c),
               const SizedBox(height: 6),
               GestureDetector(
                 onTap: _pickDate,
@@ -151,9 +202,6 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
                       hintText: 'Select date',
                       prefixIcon:
                           const Icon(Icons.calendar_today_outlined, size: 18),
-                      suffixText: _dob != null
-                          ? DateFormat('dd MMM yyyy').format(_dob!)
-                          : null,
                     ),
                     controller: TextEditingController(
                       text: _dob != null
@@ -165,7 +213,7 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
               ),
               const SizedBox(height: 16),
 
-              _label('Time of Birth (optional)', tt),
+              _label('Time of Birth (optional)', tt, c),
               const SizedBox(height: 6),
               GestureDetector(
                 onTap: _pickTime,
@@ -182,7 +230,7 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
               ),
               const SizedBox(height: 16),
 
-              _label('Place of Birth *', tt),
+              _label('Place of Birth *', tt, c),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _placeCtrl,
@@ -201,12 +249,12 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
                 },
                 icon: const Icon(Icons.map_outlined, size: 16),
                 label: const Text('Pick on Map', style: TextStyle(fontSize: 13)),
-                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                style: TextButton.styleFrom(foregroundColor: c.primary),
               ),
 
               const SizedBox(height: 32),
               AppButton(
-                label: 'Save Kundli Profile',
+                label: _isEdit ? 'Save Changes' : 'Save Kundli Profile',
                 onPressed: _submit,
                 loading: _loading,
               ),
@@ -217,6 +265,6 @@ class _AddKundliScreenState extends ConsumerState<AddKundliScreen> {
     );
   }
 
-  Widget _label(String text, TextTheme tt) =>
-      Text(text, style: tt.labelMedium?.copyWith(color: AppColors.textSecondary));
+  Widget _label(String text, TextTheme tt, AppThemeColors c) =>
+      Text(text, style: tt.labelMedium?.copyWith(color: c.textSecondary));
 }

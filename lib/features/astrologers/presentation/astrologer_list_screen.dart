@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/astrologers_repository.dart';
 import '../domain/astrologer_models.dart';
 
@@ -43,13 +43,15 @@ class _AstrologerListScreenState extends ConsumerState<AstrologerListScreen> {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final astrologersAsync = ref.watch(_filteredAstrologersProvider);
     final isOnline = ref.watch(_onlineFilterProvider);
     final specialty = ref.watch(_specialtyFilterProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
+        backgroundColor: c.bg,
         title: const Text('Astrologers'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
@@ -57,17 +59,17 @@ class _AstrologerListScreenState extends ConsumerState<AstrologerListScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
               controller: _searchCtrl,
-              style: tt.bodyMedium,
+              style: tt.bodyMedium?.copyWith(color: c.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search by name, specialty...',
-                hintStyle:
-                    tt.bodyMedium?.copyWith(color: AppColors.textDisabled),
-                prefixIcon: const Icon(Icons.search,
-                    color: AppColors.textSecondary, size: 20),
+                hintStyle: tt.bodyMedium?.copyWith(
+                    color: c.textSecondary.withValues(alpha: 0.5)),
+                prefixIcon:
+                    Icon(Icons.search, color: c.textSecondary, size: 20),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear,
-                            color: AppColors.textSecondary, size: 18),
+                        icon: Icon(Icons.clear,
+                            color: c.textSecondary, size: 18),
                         onPressed: () {
                           _searchCtrl.clear();
                           ref.read(_searchQueryProvider.notifier).state = '';
@@ -75,22 +77,19 @@ class _AstrologerListScreenState extends ConsumerState<AstrologerListScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.cardDark,
+                fillColor: c.card,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: AppColors.borderDark),
+                  borderSide: BorderSide(color: c.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: AppColors.borderDark),
+                  borderSide: BorderSide(color: c.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: AppColors.primary),
+                  borderSide: BorderSide(color: c.primary),
                 ),
               ),
               onChanged: (v) =>
@@ -104,13 +103,12 @@ class _AstrologerListScreenState extends ConsumerState<AstrologerListScreen> {
           _FilterChips(isOnline: isOnline, specialty: specialty),
           Expanded(
             child: astrologersAsync.when(
-              loading: () => _AstrologerListSkeleton(),
+              loading: () => const _AstrologerListSkeleton(),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: AppColors.error, size: 40),
+                    Icon(Icons.error_outline, color: c.error, size: 40),
                     const SizedBox(height: 12),
                     Text('Failed to load astrologers',
                         style: tt.bodyMedium),
@@ -136,8 +134,8 @@ class _AstrologerListScreenState extends ConsumerState<AstrologerListScreen> {
                             style: tt.titleMedium),
                         const SizedBox(height: 8),
                         Text('Try changing your filters',
-                            style: tt.bodySmall?.copyWith(
-                                color: AppColors.textSecondary)),
+                            style: tt.bodySmall
+                                ?.copyWith(color: c.textSecondary)),
                       ],
                     ),
                   );
@@ -213,26 +211,25 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent : AppColors.cardDark,
+          color: selected ? c.accent : c.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? AppColors.accent : AppColors.borderDark,
+            color: selected ? c.accent : c.border,
           ),
         ),
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: selected
-                    ? AppColors.bgDark
-                    : AppColors.textSecondary,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+                color: selected ? c.bg : c.textSecondary,
+                fontWeight:
+                    selected ? FontWeight.w700 : FontWeight.normal,
               ),
         ),
       ),
@@ -247,14 +244,15 @@ class _AstrologerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     return GestureDetector(
       onTap: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.cardDark,
+          color: c.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderDark),
+          border: Border.all(color: c.border),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,14 +261,13 @@ class _AstrologerCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: AppColors.surfaceDark,
+                  backgroundColor: c.surface,
                   backgroundImage: astrologer.profileImageUrl != null
                       ? CachedNetworkImageProvider(
                           astrologer.profileImageUrl!)
                       : null,
                   child: astrologer.profileImageUrl == null
-                      ? const Icon(Icons.person,
-                          size: 28, color: AppColors.textSecondary)
+                      ? Icon(Icons.person, size: 28, color: c.textSecondary)
                       : null,
                 ),
                 if (astrologer.isOnline)
@@ -281,10 +278,9 @@ class _AstrologerCard extends StatelessWidget {
                       width: 13,
                       height: 13,
                       decoration: BoxDecoration(
-                        color: AppColors.success,
+                        color: c.success,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                            color: AppColors.cardDark, width: 2),
+                        border: Border.all(color: c.card, width: 2),
                       ),
                     ),
                   ),
@@ -309,26 +305,29 @@ class _AstrologerCard extends StatelessWidget {
                   Text(
                     astrologer.specialties.take(3).join(' • '),
                     style: tt.labelSmall
-                        ?.copyWith(color: AppColors.textSecondary),
+                        ?.copyWith(color: c.textSecondary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.translate,
-                          size: 12, color: AppColors.textDisabled),
+                      Icon(Icons.translate,
+                          size: 12,
+                          color: c.textSecondary.withValues(alpha: 0.6)),
                       const SizedBox(width: 4),
                       Text(
                         astrologer.languages.take(2).join(', '),
-                        style: tt.labelSmall
-                            ?.copyWith(color: AppColors.textDisabled),
+                        style: tt.labelSmall?.copyWith(
+                            color: c.textSecondary
+                                .withValues(alpha: 0.6)),
                       ),
                       const Spacer(),
                       Text(
                         '${astrologer.experienceYears}yr exp',
-                        style: tt.labelSmall
-                            ?.copyWith(color: AppColors.textDisabled),
+                        style: tt.labelSmall?.copyWith(
+                            color: c.textSecondary
+                                .withValues(alpha: 0.6)),
                       ),
                     ],
                   ),
@@ -340,12 +339,13 @@ class _AstrologerCard extends StatelessWidget {
                         children: [
                           Text('Chat',
                               style: tt.labelSmall?.copyWith(
-                                  color: AppColors.textDisabled,
+                                  color: c.textSecondary
+                                      .withValues(alpha: 0.6),
                                   fontSize: 10)),
                           Text(
-                            '₹${(astrologer.pricePerMinChat / 100).toStringAsFixed(0)}/min',
+                            '₹${astrologer.pricePerMinChat.toStringAsFixed(0)}/min',
                             style: tt.labelMedium?.copyWith(
-                                color: AppColors.accent,
+                                color: c.accent,
                                 fontWeight: FontWeight.w700),
                           ),
                         ],
@@ -356,12 +356,13 @@ class _AstrologerCard extends StatelessWidget {
                         children: [
                           Text('Call',
                               style: tt.labelSmall?.copyWith(
-                                  color: AppColors.textDisabled,
+                                  color: c.textSecondary
+                                      .withValues(alpha: 0.6),
                                   fontSize: 10)),
                           Text(
-                            '₹${(astrologer.pricePerMinCall / 100).toStringAsFixed(0)}/min',
+                            '₹${astrologer.pricePerMinCall.toStringAsFixed(0)}/min',
                             style: tt.labelMedium?.copyWith(
-                                color: AppColors.accent,
+                                color: c.accent,
                                 fontWeight: FontWeight.w700),
                           ),
                         ],
@@ -372,35 +373,37 @@ class _AstrologerCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.error.withValues(alpha: 0.15),
+                            color: c.error.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text('Busy',
-                              style: tt.labelSmall?.copyWith(
-                                  color: AppColors.error)),
+                              style: tt.labelSmall
+                                  ?.copyWith(color: c.error)),
                         )
                       else if (!astrologer.isOnline)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.borderDark,
+                            color: c.border,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text('Offline',
                               style: tt.labelSmall?.copyWith(
-                                  color: AppColors.textDisabled)),
+                                  color: c.textSecondary)),
                         )
                       else
                         SizedBox(
                           height: 32,
                           child: ElevatedButton.icon(
-                            onPressed: () => context
-                                .push(AppRoutes.astrologerDetail(astrologer.id)),
+                            onPressed: () => context.push(
+                                AppRoutes.astrologerDetail(astrologer.id)),
                             icon: const Icon(Icons.chat_bubble_outline,
                                 size: 14),
                             label: const Text('Chat'),
                             style: ElevatedButton.styleFrom(
+                              backgroundColor: c.primary,
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12),
                               textStyle: const TextStyle(fontSize: 13),
@@ -425,22 +428,22 @@ class _RatingBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.15),
+        color: c.accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded,
-              size: 12, color: AppColors.accent),
+          Icon(Icons.star_rounded, size: 12, color: c.accent),
           const SizedBox(width: 2),
           Text(
             rating.toStringAsFixed(1),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.accent, fontWeight: FontWeight.w700),
+                color: c.accent, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -449,8 +452,11 @@ class _RatingBadge extends StatelessWidget {
 }
 
 class _AstrologerListSkeleton extends StatelessWidget {
+  const _AstrologerListSkeleton();
+
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: 6,
@@ -458,7 +464,7 @@ class _AstrologerListSkeleton extends StatelessWidget {
       itemBuilder: (_, __) => Container(
         height: 120,
         decoration: BoxDecoration(
-          color: AppColors.cardDark,
+          color: c.card,
           borderRadius: BorderRadius.circular(16),
         ),
       ),

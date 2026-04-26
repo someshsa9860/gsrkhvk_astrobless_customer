@@ -227,6 +227,7 @@ class AuthController extends StateNotifier<AuthControllerState> {
     await _ref.read(authNotifierProvider.notifier).setTokens(
           result.accessToken,
           result.refreshToken,
+          customerId: result.customer.id,
         );
     state = AuthControllerState(customer: result.customer);
   }

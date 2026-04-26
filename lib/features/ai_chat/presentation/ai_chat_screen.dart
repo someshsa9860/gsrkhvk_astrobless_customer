@@ -3,7 +3,7 @@ import 'package:flutter_gen_ai_chat_ui/flutter_gen_ai_chat_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/ai_chat_repository.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -96,10 +96,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.bgDark,
+        backgroundColor: c.bg,
         leading: BackButton(onPressed: () => context.pop()),
         title: Row(
           children: [
@@ -107,8 +110,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.gradientEnd],
+                gradient: LinearGradient(
+                  colors: [c.primary, c.primary.withValues(alpha: 0.6)],
                 ),
                 shape: BoxShape.circle,
               ),
@@ -122,10 +125,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 Text(
                   'Powered by AI',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(color: AppColors.textSecondary),
+                  style: tt.labelSmall?.copyWith(color: c.textSecondary),
                 ),
               ],
             ),
@@ -136,7 +136,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             onPressed: () => context.push(AppRoutes.astrologers),
             icon: const Icon(Icons.person_outline, size: 16),
             label: const Text('Human', style: TextStyle(fontSize: 12)),
-            style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+            style: TextButton.styleFrom(foregroundColor: c.accent),
           ),
         ],
       ),
@@ -146,21 +146,21 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: c.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.borderDark),
+              border: Border.all(color: c.border),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, size: 14, color: AppColors.textDisabled),
+                Icon(Icons.info_outline, size: 14,
+                    color: c.textSecondary.withValues(alpha: 0.6)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'For entertainment purposes only. Consult a human astrologer for serious matters.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: AppColors.textDisabled, fontSize: 10),
+                    style: tt.labelSmall?.copyWith(
+                        color: c.textSecondary.withValues(alpha: 0.6),
+                        fontSize: 10),
                   ),
                 ),
               ],
@@ -174,8 +174,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               onSendMessage: _onSend,
               loadingConfig: LoadingConfig(
                 isLoading: _isLoading,
-                loadingIndicator: const Padding(
-                  padding: EdgeInsets.all(12),
+                loadingIndicator: Padding(
+                  padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
                       SizedBox(
@@ -183,43 +183,43 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.accent,
+                          color: c.accent,
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text('AI is thinking...',
                           style: TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13)),
+                              color: c.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),
               ),
               inputOptions: InputOptions(
-                textStyle: const TextStyle(color: AppColors.textPrimary),
+                textStyle: TextStyle(color: c.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Ask about your stars...',
-                  hintStyle:
-                      const TextStyle(color: AppColors.textDisabled),
+                  hintStyle: TextStyle(
+                      color: c.textSecondary.withValues(alpha: 0.5)),
                   filled: true,
-                  fillColor: AppColors.surfaceDark,
+                  fillColor: c.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: AppColors.borderDark),
+                    borderSide: BorderSide(color: c.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: AppColors.borderDark),
+                    borderSide: BorderSide(color: c.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: AppColors.primary),
+                    borderSide: BorderSide(color: c.primary),
                   ),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
                 sendButtonBuilder: (onSend) => IconButton(
                   onPressed: onSend,
-                  icon: const Icon(Icons.send_rounded, color: AppColors.primary),
+                  icon: Icon(Icons.send_rounded, color: c.primary),
                 ),
               ),
               messageOptions: const MessageOptions(

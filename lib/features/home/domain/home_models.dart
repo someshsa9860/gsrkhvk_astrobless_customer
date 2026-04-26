@@ -1,19 +1,19 @@
 class HomeBanner {
   final String id;
-  final String imageUrl;
+  final String? imageUrl;
   final String ctaType;
   final String ctaTarget;
 
   const HomeBanner({
     required this.id,
-    required this.imageUrl,
+    this.imageUrl,
     required this.ctaType,
     required this.ctaTarget,
   });
 
   factory HomeBanner.fromJson(Map<String, dynamic> j) => HomeBanner(
         id: j['id'] as String,
-        imageUrl: j['imageUrl'] as String,
+        imageUrl: j['imageUrl'] as String?,
         ctaType: j['ctaType'] as String? ?? 'none',
         ctaTarget: j['ctaTarget'] as String? ?? '',
       );
@@ -26,7 +26,7 @@ class TrendingAstrologer {
   final List<String> specialties;
   final double ratingAvg;
   final int ratingCount;
-  final int pricePerMinChat;
+  final double pricePerMinChat;
   final bool isOnline;
 
   const TrendingAstrologer({
@@ -49,9 +49,9 @@ class TrendingAstrologer {
                 ?.map((e) => e as String)
                 .toList() ??
             [],
-        ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
-        ratingCount: (j['ratingCount'] as int?) ?? 0,
-        pricePerMinChat: (j['pricePerMinChat'] as int?) ?? 0,
+        ratingAvg: double.tryParse(j['ratingAvg']?.toString() ?? '0') ?? 0,
+        ratingCount: (j['ratingCount'] as num?)?.toInt() ?? 0,
+        pricePerMinChat: (j['pricePerMinChat'] as num?)?.toDouble() ?? 0,
         isOnline: (j['isOnline'] as bool?) ?? false,
       );
 }

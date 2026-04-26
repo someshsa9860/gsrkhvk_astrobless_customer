@@ -20,7 +20,8 @@ class AstrologersRepository {
     double? minRating,
     double? maxPrice,
     bool? isOnline,
-    String sort = '-ratingAvg',
+    String sort = 'rating',
+    String order = 'desc',
     int page = 1,
     int limit = 20,
   }) async {
@@ -32,11 +33,12 @@ class AstrologersRepository {
       minRating: minRating,
       maxPrice: maxPrice,
       sort: sort,
+      order: order,
       page: page,
       limit: limit,
     );
-    final list = data['astrologers'] as List<dynamic>? ??
-        data as List<dynamic>? ??
+    final list = data['items'] as List<dynamic>? ??
+        data['astrologers'] as List<dynamic>? ??
         <dynamic>[];
     return list.map((e) => Astrologer.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -54,7 +56,7 @@ final astrologersRepositoryProvider = Provider<AstrologersRepository>(
   (ref) => AstrologersRepository(ref.watch(apiClientProvider)),
 );
 
-final astrologersProvider = FutureProvider.autoDispose<List<Astrologer>>((ref) {
+final astrologersProvider = FutureProvider<List<Astrologer>>((ref) {
   return ref.watch(astrologersRepositoryProvider).fetchAstrologers();
 });
 

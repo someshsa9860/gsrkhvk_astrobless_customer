@@ -177,7 +177,10 @@ class ApiClient {
   /// Fetches the wallet transaction ledger.
   Future<List<dynamic>> fetchWalletTransactions() async {
     final res = await get(Endpoints.wallet.transactions);
-    return res.data['data'] as List<dynamic>? ?? [];
+    final data = res.data['data'];
+    // API returns { items: [...], total: N } — extract items
+    if (data is Map) return (data['items'] as List<dynamic>?) ?? [];
+    return data as List<dynamic>? ?? [];
   }
 
   /// Initiates a wallet top-up and returns the provider client payload.
@@ -204,18 +207,20 @@ class ApiClient {
     bool? isOnline,
     double? minRating,
     double? maxPrice,
-    String? sort,
+    String sort = 'rating',
+    String order = 'desc',
     int page = 1,
     int limit = 20,
   }) async {
     final res = await get(Endpoints.astrologers.list, queryParameters: {
-      if (search != null && search.isNotEmpty) 'search': search,
+      if (search != null && search.isNotEmpty) 'q': search,
       if (specialty != null) 'specialty': specialty,
       if (language != null) 'language': language,
       if (isOnline != null) 'isOnline': isOnline,
       if (minRating != null) 'minRating': minRating,
       if (maxPrice != null) 'maxPrice': maxPrice,
-      if (sort != null) 'sort': sort,
+      'sort': sort,
+      'order': order,
       'page': page,
       'limit': limit,
     });
@@ -246,12 +251,35 @@ class ApiClient {
     required double lng,
   }) async {
     final res = await post(Endpoints.kundli.createProfile, data: {
-      'name': name,
-      'dateOfBirth': dateOfBirth,
-      if (timeOfBirth != null) 'timeOfBirth': timeOfBirth,
-      'placeOfBirth': placeOfBirth,
-      'lat': lat,
-      'lng': lng,
+      'label': name,
+      'birthDate': dateOfBirth,
+      if (timeOfBirth != null) 'birthTime': timeOfBirth,
+      'birthPlace': placeOfBirth,
+      'birthLat': lat,
+      'birthLng': lng,
+      'timezoneOffset': 5.5,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Updates an existing Kundli profile by [id].
+  Future<Map<String, dynamic>> updateKundliProfile({
+    required String id,
+    required String name,
+    required String dateOfBirth,
+    String? timeOfBirth,
+    required String placeOfBirth,
+    required double lat,
+    required double lng,
+  }) async {
+    final res = await patch(Endpoints.kundli.updateProfile(id), data: {
+      'label': name,
+      'birthDate': dateOfBirth,
+      if (timeOfBirth != null) 'birthTime': timeOfBirth,
+      'birthPlace': placeOfBirth,
+      'birthLat': lat,
+      'birthLng': lng,
+      'timezoneOffset': 5.5,
     });
     return res.data['data'] as Map<String, dynamic>;
   }
@@ -262,9 +290,82 @@ class ApiClient {
   }
 
   /// Fetches (or generates) the Kundli report for profile [profileId].
+  /// In debug builds, passes ?refresh=true so the cache is always busted.
   Future<Map<String, dynamic>> fetchKundliReport(String profileId) async {
-    final res = await get(Endpoints.kundli.report(profileId));
+    final res = await get(
+      Endpoints.kundli.report(profileId),
+      queryParameters: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : {'refresh': 'true'},
+    );
     return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Fetches Ashtakvarga bindus + chart image for [profileId].
+  /// [planet]: 'Sun' | 'Moon' | 'Mars' | 'Mercury' | 'Jupiter' | 'Venus' | 'Saturn' | 'total'
+  Future<Map<String, dynamic>> fetchAshtakvarga(
+    String profileId, {
+    String planet = 'total',
+  }) async {
+    final res = await get(
+      Endpoints.kundli.ashtakvarga(profileId),
+      queryParameters: {'planet': planet},
+    );
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Fetches divisional chart planet positions for [profileId].
+  /// [div]: 'D1' | 'D9' | 'D10' | etc.
+  Future<Map<String, dynamic>> fetchDivisionalChart(
+    String profileId, {
+    String div = 'D1',
+  }) async {
+    final res = await get(
+      Endpoints.kundli.divisional(profileId),
+      queryParameters: {'div': div},
+    );
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Fetches full Vimshottari dasha hierarchy (maha + antar) for [profileId].
+  Future<List<dynamic>> fetchFullDasha(String profileId) async {
+    final res = await get(Endpoints.kundli.dasha(profileId));
+    final data = res.data['data'];
+    return data is List ? data : [];
+  }
+
+  /// Fetches specific sub-dasha levels (paryantar/sookshma/prana).
+  Future<Map<String, dynamic>> fetchSpecificSubDasha(
+    String profileId, {
+    required String md,
+    required String ad,
+    required String pd,
+    required String sd,
+  }) async {
+    final res = await get(
+      Endpoints.kundli.dashaSpecific(profileId),
+      queryParameters: {'md': md, 'ad': ad, 'pd': pd, 'sd': sd},
+    );
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Computes Ashtakoot compatibility between two saved Kundli profiles.
+  Future<Map<String, dynamic>> matchKundli({
+    required String profileAId,
+    required String profileBId,
+  }) async {
+    final res = await post(Endpoints.kundli.match, data: {
+      'profileAId': profileAId,
+      'profileBId': profileBId,
+    });
+    return res.data['data'] as Map<String, dynamic>;
+  }
+
+  /// Lists all previous Kundli match results.
+  Future<List<dynamic>> fetchKundliMatches() async {
+    final res = await get(Endpoints.kundli.matches);
+    final data = res.data['data'];
+    return data is List ? data : [];
   }
 
   // ─── AI Chat ───────────────────────────────────────────────────────────────
@@ -368,6 +469,11 @@ class ApiClient {
 
   // ─── Consultations ─────────────────────────────────────────────────────────
 
+  /// Ends an active consultation from the customer side.
+  Future<void> endConsultation(String consultationId, {String reason = 'customerEnded'}) async {
+    await post(Endpoints.consultations.end(consultationId), data: {'reason': reason});
+  }
+
   /// Fetches the customer's consultation history.
   Future<Map<String, dynamic>> fetchConsultations({
     String? status,
@@ -411,6 +517,25 @@ class ApiClient {
       queryParameters: {'limit': limit},
     );
     return res.data['data'] as List<dynamic>? ?? [];
+  }
+
+  /// Fetches the customer's puja bookings.
+  Future<List<dynamic>> fetchPujaBookings({
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final res = await get(
+      Endpoints.puja.bookings,
+      queryParameters: {
+        if (status != null) 'status': status,
+        'page': page,
+        'limit': limit,
+      },
+    );
+    final data = res.data['data'];
+    if (data is Map) return data['items'] as List<dynamic>? ?? [];
+    return data as List<dynamic>? ?? [];
   }
 
   /// Fetches the learning videos catalogue.

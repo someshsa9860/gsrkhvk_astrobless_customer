@@ -7,7 +7,8 @@ class AstrologerSearchState {
     this.items = const [],
     this.query = '',
     this.page = 1,
-    this.hasMore = true,
+    this.total = 0,
+    this.hasMore = false,
     this.isLoading = false,
     this.isLoadingMore = false,
   });
@@ -15,6 +16,7 @@ class AstrologerSearchState {
   final List<Astrologer> items;
   final String query;
   final int page;
+  final int total;
   final bool hasMore;
   final bool isLoading;
   final bool isLoadingMore;
@@ -23,6 +25,7 @@ class AstrologerSearchState {
     List<Astrologer>? items,
     String? query,
     int? page,
+    int? total,
     bool? hasMore,
     bool? isLoading,
     bool? isLoadingMore,
@@ -31,6 +34,7 @@ class AstrologerSearchState {
         items: items ?? this.items,
         query: query ?? this.query,
         page: page ?? this.page,
+        total: total ?? this.total,
         hasMore: hasMore ?? this.hasMore,
         isLoading: isLoading ?? this.isLoading,
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
@@ -45,13 +49,14 @@ class AstrologerSearchNotifier extends StateNotifier<AstrologerSearchState> {
   static const _pageSize = 15;
 
   Future<void> search(String query) async {
-    if (state.isLoading) return;
+    if (!mounted || state.isLoading) return;
 
     state = state.copyWith(
       query: query,
       page: 1,
       items: [],
-      hasMore: true,
+      total: 0,
+      hasMore: false,
       isLoading: true,
     );
 
@@ -61,20 +66,24 @@ class AstrologerSearchNotifier extends StateNotifier<AstrologerSearchState> {
         page: 1,
         limit: _pageSize,
       );
+      if (!mounted) return;
       final list = _parseList(data);
+      final total = (data['total'] as num?)?.toInt() ?? list.length;
       state = state.copyWith(
         items: list,
         page: 2,
-        hasMore: list.length >= _pageSize,
+        total: total,
+        hasMore: list.length < total,
         isLoading: false,
       );
     } catch (_) {
+      if (!mounted) return;
       state = state.copyWith(isLoading: false);
     }
   }
 
   Future<void> loadMore() async {
-    if (!state.hasMore || state.isLoading || state.isLoadingMore) return;
+    if (!mounted || !state.hasMore || state.isLoading || state.isLoadingMore) return;
 
     state = state.copyWith(isLoadingMore: true);
 
@@ -84,21 +93,26 @@ class AstrologerSearchNotifier extends StateNotifier<AstrologerSearchState> {
         page: state.page,
         limit: _pageSize,
       );
+      if (!mounted) return;
       final newItems = _parseList(data);
+      final allItems = [...state.items, ...newItems];
+      final total = (data['total'] as num?)?.toInt() ?? state.total;
       state = state.copyWith(
-        items: [...state.items, ...newItems],
+        items: allItems,
         page: state.page + 1,
-        hasMore: newItems.length >= _pageSize,
+        total: total,
+        hasMore: allItems.length < total,
         isLoadingMore: false,
       );
     } catch (_) {
+      if (!mounted) return;
       state = state.copyWith(isLoadingMore: false);
     }
   }
 
   List<Astrologer> _parseList(Map<String, dynamic> data) {
-    final list = data['astrologers'] as List<dynamic>? ??
-        data['items'] as List<dynamic>? ??
+    final list = data['items'] as List<dynamic>? ??
+        data['astrologers'] as List<dynamic>? ??
         <dynamic>[];
     return list
         .map((e) => Astrologer.fromJson(e as Map<String, dynamic>))

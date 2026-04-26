@@ -485,7 +485,31 @@ GET /v1/customer/kundli/profiles/:id/report
 
 Report contains: planetary positions, houses, dashas, kundli image data.
 
-### 10.3 Location picker (Google Maps)
+### 10.3 Kundli matching (Ashtakoot compatibility)
+
+Entry point: heart icon in the `KundliListScreen` AppBar → navigates to `AppRoutes.kundliMatch`.
+
+**Screen:** `kundli_match_screen.dart` contains two widgets:
+- `KundliMatchScreen` — profile picker (two dropdowns) + previous match history list
+- `KundliMatchResultScreen` — circular score dial (out of 36), score label badge, Manglik status, per-koota bar chart breakdown
+
+**Models:** `KundliMatch`, `KundliMatchBreakdown`, `KootaScore` in `kundli_models.dart`.
+
+**Provider:** `kundliMatchesProvider` (FutureProvider) fetches match history.
+
+**API flow:**
+```
+POST /v1/customer/kundli/match { profileAId, profileBId } → KundliMatch (computed + cached)
+GET  /v1/customer/kundli/matches → list of previous results (with profileA/profileB nested)
+```
+
+The backend fetches from vedicastroapi.com and persists to `kundliMatches` table — results are not recomputed on re-fetch.
+
+**Score labels:** Excellent (≥28), Good (≥21), Average (≥18), Poor (<18) — out of 36 total points.
+
+**Warning color:** `AppThemeColors` has no `warning` field. Use `const Color(0xFFFF9800)` (amber) inline for "Average" score states.
+
+### 10.4 Location picker (Google Maps)
 
 `LocationPickerScreen` uses `google_maps_flutter` + `geolocator`:
 1. Shows map centered on user's current location (requested via geolocator)
@@ -657,5 +681,25 @@ Same as partner_app CLAUDE.md §20. Key points:
 6. Route in `app_router.dart`
 
 ---
+
+## 18. Decisions recorded (2026-04-25)
+
+### Wallet transactions response shape (locked)
+
+`GET /wallet/transactions` returns `{ ok, data: { items: [...], total: N }, traceId }` — a paginated envelope, **not** a flat array. `ApiClient.fetchWalletTransactions()` extracts `data['items']` when the response data is a Map. Do not cast `data['data']` as `List<dynamic>` directly.
+
+### FCM push notifications — what the app receives
+
+When wallet events occur, the backend pushes FCM notifications. The app should handle these in the FCM foreground/background handler. Data payloads:
+- `{ type: 'walletUpdated' }` — customer wallet topped up or debited
+- `{ type: 'earningsUpdate', consultationId }` — astrologer earned from a consultation
+
+### Banner imageUrl is nullable
+
+`HomeBanner.imageUrl` is `String?`. The backend stores `imageKey` and resolves to a URL — if no image is uploaded, `imageUrl` is null. Always null-check before passing to `CachedNetworkImage`.
+
+### AppThemeColors — available colors
+
+`AppThemeColors` has: `primary`, `accent`, `success`, `error`, `textPrimary`, `textSecondary`, `bg`, `card`, `surface`, `border`. There is **no** `warning` field. For warning/amber states use `const Color(0xFFFF9800)` inline.
 
 _Last updated: 2026-04-25. Keep this file alive._

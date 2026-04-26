@@ -26,7 +26,7 @@ class CustomerProfile {
         name: json['name'] as String?,
         phone: json['phone'] as String?,
         email: json['email'] as String?,
-        profileImageUrl: json['profileImageUrl'] as String?,
+        profileImageUrl: json['profileImageUrl'] as String? ?? json['profileImageKey'] as String?,
         emailVerified: json['emailVerified'] as bool? ?? false,
         gender: json['gender'] as String?,
         dob: json['dob'] as String?,

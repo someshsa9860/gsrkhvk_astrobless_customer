@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/auth_notifier.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -15,7 +15,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Slight delay so the splash animation plays before auth check resolves
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) ref.read(authNotifierProvider.notifier).init();
     });
@@ -24,15 +23,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0D0B1E), Color(0xFF1A1740), Color(0xFF0D0B1E)],
-            stops: [0.0, 0.5, 1.0],
+            colors: [c.bgDark, c.surfaceDark, c.bgDark],
+            stops: const [0.0, 0.5, 1.0],
           ),
         ),
         child: Stack(
@@ -48,7 +48,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.primary.withValues(alpha: 0.15),
+                      c.primary.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                   ),
@@ -66,7 +66,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.accent.withValues(alpha: 0.10),
+                      c.accent.withValues(alpha: 0.10),
                       Colors.transparent,
                     ],
                   ),
@@ -78,20 +78,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo container
                   Container(
                     width: 88,
                     height: 88,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [AppColors.primary, Color(0xFF7C4DFF)],
+                        colors: [c.primary, c.primary.withValues(alpha: 0.6)],
                       ),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.4),
+                          color: c.primary.withValues(alpha: 0.4),
                           blurRadius: 30,
                           spreadRadius: 4,
                         ),
@@ -112,7 +111,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   Text(
                     'Astrobless',
                     style: tt.headlineLarge?.copyWith(
-                      color: AppColors.textPrimary,
+                      color: c.textPrimary,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 2,
                     ),
@@ -126,7 +125,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   Text(
                     'Your cosmic guide to clarity',
                     style: tt.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
+                      color: c.textSecondary,
                       letterSpacing: 0.5,
                     ),
                   )
@@ -135,23 +134,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
                   const SizedBox(height: 56),
 
-                  // Pulsing loader
                   SizedBox(
                     width: 32,
                     height: 32,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.accent.withValues(alpha: 0.8),
+                        c.accent.withValues(alpha: 0.8),
                       ),
                     ),
                   )
-                      .animate(onPlay: (c) => c.repeat())
+                      .animate(onPlay: (ct) => ct.repeat())
                       .fadeIn(delay: 700.ms)
                       .then()
                       .shimmer(
                           duration: 1200.ms,
-                          color: AppColors.accent.withValues(alpha: 0.3)),
+                          color: c.accent.withValues(alpha: 0.3)),
                 ],
               ),
             ),
@@ -164,7 +162,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 'v1.0',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: AppColors.textDisabled,
+                  color: c.textSecondary.withValues(alpha: 0.4),
                   fontSize: 12,
                 ),
               ).animate().fadeIn(delay: 800.ms),

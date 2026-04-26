@@ -8,7 +8,7 @@
 abstract final class AppRoutes {
   AppRoutes._();
 
-  // ─── Auth ───────────────────────────────────────────────────────────���───
+  // ─── Auth ──────────────────────────────────────────────────────────────────
 
   static const splash = '/splash';
   static const authPhone = '/auth/phone';
@@ -42,8 +42,14 @@ abstract final class AppRoutes {
   static const kundliList = '/kundli';
   static const kundliAdd = '/kundli/add';
 
+  /// `/kundli/:id/edit`
+  static String kundliEdit(String id) => '/kundli/$id/edit';
+
   /// `/kundli/:id/report`
   static String kundliReport(String id) => '/kundli/$id/report';
+
+  static const kundliMatch = '/kundli/match';
+  static const kundliMatchHistory = '/kundli/matches';
 
   // ─── Features ────────────────────────────────────────────────────────────
 
@@ -51,6 +57,10 @@ abstract final class AppRoutes {
   static const aiChat = '/ai-chat';
   static const wallet = '/wallet';
   static const notifications = '/notifications';
+  static const puja = '/puja';
+  static const astromall = '/astromall';
+  static const support = '/support';
+  static const referral = '/referral';
 
   // ─── Profile ─────────────────────────────────────────────────────────────
 

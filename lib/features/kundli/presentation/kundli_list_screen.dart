@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/kundli_repository.dart';
 import '../domain/kundli_models.dart';
 
@@ -14,12 +14,18 @@ class KundliListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profilesAsync = ref.watch(kundliProfilesProvider);
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
         title: const Text('My Kundli Profiles'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.favorite_border_rounded),
+            tooltip: 'Kundli Matching',
+            onPressed: () => context.push(AppRoutes.kundliMatch),
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => context.push(AppRoutes.kundliAdd).then(
@@ -30,7 +36,7 @@ class KundliListScreen extends ConsumerWidget {
       ),
       body: profilesAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+            Center(child: CircularProgressIndicator(color: c.accent)),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -56,8 +62,7 @@ class KundliListScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Add your birth details to generate\na personalized birth chart',
-                    style:
-                        tt.bodySmall?.copyWith(color: AppColors.textSecondary),
+                    style: tt.bodySmall?.copyWith(color: c.textSecondary),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -88,7 +93,7 @@ class KundliListScreen extends ConsumerWidget {
         onPressed: () => context.push(AppRoutes.kundliAdd).then(
               (_) => ref.invalidate(kundliProfilesProvider),
             ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: c.primary,
         child: const Icon(Icons.add),
       ),
     );
@@ -103,86 +108,91 @@ class _KundliCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderDark),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
+    return InkWell(
+      onTap: () => context.push(AppRoutes.kundliReport(profile.id)),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: c.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.border),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: c.primary.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(child: Text('🔮', style: TextStyle(fontSize: 22))),
           ),
-          child: const Center(child: Text('🔮', style: TextStyle(fontSize: 22))),
-        ),
-        title: Text(profile.name, style: tt.titleSmall),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              profile.dateOfBirth +
-                  (profile.timeOfBirth != null
-                      ? ' • ${profile.timeOfBirth}'
-                      : ''),
-              style: tt.labelSmall?.copyWith(color: AppColors.textSecondary),
-            ),
-            Text(
-              profile.placeOfBirth,
-              style: tt.labelSmall?.copyWith(color: AppColors.textDisabled),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.open_in_new,
-                  color: AppColors.primary, size: 20),
-              onPressed: () =>
-                  context.push(AppRoutes.kundliReport(profile.id)),
-              tooltip: 'View Report',
-            ),
-            IconButton(
-              icon:
-                  const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    backgroundColor: AppColors.cardDark,
-                    title: const Text('Delete Profile'),
-                    content: Text(
-                        'Remove "${profile.name}" from your kundli profiles?'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel')),
-                      TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Delete',
-                              style: TextStyle(color: AppColors.error))),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  await ref
-                      .read(kundliRepositoryProvider)
-                      .deleteProfile(profile.id);
-                  onDeleted();
-                }
-              },
-              tooltip: 'Delete',
-            ),
-          ],
+          title: Text(profile.name, style: tt.titleSmall),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(
+                profile.dateOfBirth +
+                    (profile.timeOfBirth != null
+                        ? ' • ${profile.timeOfBirth}'
+                        : ''),
+                style: tt.labelSmall?.copyWith(color: c.textSecondary),
+              ),
+              Text(
+                profile.placeOfBirth,
+                style: tt.labelSmall?.copyWith(color: c.textSecondary.withValues(alpha: 0.6)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: c.primary, size: 20),
+                onPressed: () => context.push(
+                  AppRoutes.kundliEdit(profile.id),
+                  extra: profile,
+                ).then((_) => ref.invalidate(kundliProfilesProvider)),
+                tooltip: 'Edit Profile',
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: c.error, size: 20),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      backgroundColor: c.card,
+                      title: const Text('Delete Profile'),
+                      content: Text(
+                          'Remove "${profile.name}" from your kundli profiles?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: Text('Delete',
+                                style: TextStyle(color: c.error))),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await ref
+                        .read(kundliRepositoryProvider)
+                        .deleteProfile(profile.id);
+                    onDeleted();
+                  }
+                },
+                tooltip: 'Delete',
+              ),
+            ],
+          ),
         ),
       ),
     );

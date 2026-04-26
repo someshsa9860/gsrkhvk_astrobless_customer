@@ -9,9 +9,11 @@ import '../../features/auth/presentation/email_auth_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/ai_chat/presentation/ai_chat_screen.dart';
+import '../../features/kundli/domain/kundli_models.dart';
 import '../../features/kundli/presentation/kundli_list_screen.dart';
 import '../../features/kundli/presentation/add_kundli_screen.dart';
 import '../../features/kundli/presentation/kundli_report_screen.dart';
+import '../../features/kundli/presentation/kundli_match_screen.dart';
 import '../../features/horoscope/presentation/horoscope_screen.dart';
 import '../../features/wallet/presentation/wallet_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
@@ -23,6 +25,10 @@ import '../../features/consultations/presentation/chat_screen.dart';
 import '../../features/consultations/presentation/chat_list_screen.dart';
 import '../../features/consultations/presentation/call_list_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/puja/presentation/puja_list_screen.dart';
+import '../../features/astromall/presentation/astromall_screen.dart';
+import '../../features/support/presentation/support_screen.dart';
+import '../../features/referral/presentation/referral_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authNotifierProvider);
@@ -34,15 +40,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuth = authState == AuthState.authenticated;
       final loc = state.matchedLocation;
 
+      // Still initialising — stay on splash
       if (isUnknown) return loc == AppRoutes.splash ? null : AppRoutes.splash;
 
       final isAuthRoute = loc.startsWith('/auth');
-      if (!isAuth && !isAuthRoute && loc != AppRoutes.splash) {
-        return AppRoutes.authPhone;
-      }
-      if (isAuth && (isAuthRoute || loc == AppRoutes.splash)) {
-        return AppRoutes.home;
-      }
+      final isSplash = loc == AppRoutes.splash;
+
+      // Not logged in → always go to phone auth
+      if (!isAuth && (isSplash || !isAuthRoute)) return AppRoutes.authPhone;
+
+      // Logged in → send away from auth/splash to home
+      if (isAuth && (isAuthRoute || isSplash)) return AppRoutes.home;
+
       return null;
     },
     routes: [
@@ -83,8 +92,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.kundliList, builder: (_, __) => const KundliListScreen()),
       GoRoute(path: AppRoutes.kundliAdd, builder: (_, __) => const AddKundliScreen()),
       GoRoute(
+        path: '/kundli/:id/edit',
+        builder: (_, s) {
+          // profile is passed via extra; if missing, fall back to add screen
+          final profile = s.extra;
+          return AddKundliScreen(
+            profile: profile is KundliProfile ? profile : null,
+          );
+        },
+      ),
+      GoRoute(
         path: '/kundli/:id/report',
         builder: (_, s) => KundliReportScreen(profileId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.kundliMatch,
+        builder: (_, __) => const KundliMatchScreen(),
       ),
       GoRoute(path: AppRoutes.wallet, builder: (_, __) => const WalletScreen()),
       GoRoute(path: AppRoutes.notifications, builder: (_, __) => const NotificationsScreen()),
@@ -101,6 +124,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => ConsultationChatScreen(
             consultationId: s.pathParameters['id']!),
       ),
+      GoRoute(path: AppRoutes.puja, builder: (_, __) => const PujaListScreen()),
+      GoRoute(path: AppRoutes.astromall, builder: (_, __) => const AstromallScreen()),
+      GoRoute(path: AppRoutes.support, builder: (_, __) => const SupportScreen()),
+      GoRoute(path: AppRoutes.referral, builder: (_, __) => const ReferralScreen()),
     ],
   );
 });

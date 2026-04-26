@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/router/app_routes.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/format_utils.dart';
+import '../../../core/router/app_routes.dart';
+import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/theme/theme_mode_provider.dart';
+import '../../astrologers/data/astrologers_repository.dart';
+import '../../astrologers/domain/astrologer_models.dart';
 import '../data/home_repository.dart';
 import '../domain/home_models.dart';
 
@@ -16,12 +18,13 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: _HomeAppBar(),
       body: RefreshIndicator(
-        color: AppColors.accent,
-        backgroundColor: AppColors.cardDark,
+        color: c.accent,
+        backgroundColor: c.card,
         onRefresh: () async {
           ref.invalidate(bannersProvider);
           ref.invalidate(trendingAstrologersProvider);
@@ -30,21 +33,19 @@ class HomeScreen extends ConsumerWidget {
         },
         child: ListView(
           padding: EdgeInsets.zero,
-          children: [
-            const _BannerSection(),
-            const SizedBox(height: 20),
-            const _FeatureGrid(),
-            const SizedBox(height: 20),
-            const _HoroscopeTeaserCard(),
-            const SizedBox(height: 20),
-            const _TrendingAstrologers(),
-            const SizedBox(height: 20),
-            const _StoriesRow(),
-            const SizedBox(height: 20),
-            const _LearningVideos(),
-            const SizedBox(height: 20),
-            const _AiChatCard(),
-            const SizedBox(height: 32),
+          children: const [
+            _BannerSection(),
+            SizedBox(height: 20),
+            _FeatureGrid(),
+            SizedBox(height: 20),
+            _HoroscopeTeaserCard(),
+            SizedBox(height: 20),
+            _TrendingAstrologers(),
+            _StoriesRow(),
+            _LearningVideos(),
+            SizedBox(height: 20),
+            _AiChatCard(),
+            SizedBox(height: 32),
           ],
         ),
       ),
@@ -52,23 +53,38 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
+// ─── AppBar ───────────────────────────────────────────────────────────────
+
+class _HomeAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final themeMode = ref.watch(themeModeProvider);
+    final brightness = Theme.of(context).brightness;
+
+    IconData modeIcon;
+    if (themeMode == ThemeMode.system) {
+      modeIcon = Icons.brightness_auto_outlined;
+    } else if (themeMode == ThemeMode.dark) {
+      modeIcon = Icons.dark_mode_outlined;
+    } else {
+      modeIcon = Icons.light_mode_outlined;
+    }
+
     return AppBar(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       titleSpacing: 16,
       title: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: AppColors.accent, size: 22),
+          Icon(Icons.auto_awesome, color: c.accent, size: 22),
           const SizedBox(width: 8),
           Text(
             'Astrobless',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.accent,
+                  color: c.accent,
                   fontWeight: FontWeight.w800,
                 ),
           ),
@@ -76,7 +92,14 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+          icon: Icon(modeIcon, color: c.textPrimary),
+          tooltip: 'Toggle theme',
+          onPressed: () {
+            ref.read(themeModeProvider.notifier).toggle(brightness);
+          },
+        ),
+        IconButton(
+          icon: Icon(Icons.notifications_outlined, color: c.textPrimary),
           onPressed: () => context.push(AppRoutes.notifications),
         ),
         GestureDetector(
@@ -85,8 +108,8 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             padding: const EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 16,
-              backgroundColor: AppColors.surfaceDark,
-              child: const Icon(Icons.person_outline, size: 18, color: AppColors.textSecondary),
+              backgroundColor: c.surface,
+              child: Icon(Icons.person_outline, size: 18, color: c.textSecondary),
             ),
           ),
         ),
@@ -95,7 +118,7 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-// ─── Banner Carousel ───────────────────────────────────────────────────────
+// ─── Banner Carousel ──────────────────────────────────────────────────────
 
 class _BannerSection extends ConsumerStatefulWidget {
   const _BannerSection();
@@ -115,19 +138,17 @@ class _BannerSectionState extends ConsumerState<_BannerSection> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final bannersAsync = ref.watch(bannersProvider);
 
     return bannersAsync.when(
       loading: () => Shimmer.fromColors(
-        baseColor: AppColors.surfaceDark,
-        highlightColor: AppColors.cardDark,
+        baseColor: c.surface,
+        highlightColor: c.card,
         child: Container(
           height: 180,
           margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceDark,
-            borderRadius: BorderRadius.circular(16),
-          ),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
         ),
       ),
       error: (_, __) => _FallbackBanner(),
@@ -148,11 +169,11 @@ class _BannerSectionState extends ConsumerState<_BannerSection> {
               SmoothPageIndicator(
                 controller: _pageCtrl,
                 count: banners.length,
-                effect: const WormEffect(
+                effect: WormEffect(
                   dotHeight: 6,
                   dotWidth: 6,
-                  activeDotColor: AppColors.accent,
-                  dotColor: AppColors.borderDark,
+                  activeDotColor: c.accent,
+                  dotColor: c.border,
                 ),
               ),
             ],
@@ -169,21 +190,22 @@ class _BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [AppColors.gradientStart, AppColors.gradientEnd],
-        ),
+        gradient: LinearGradient(colors: [c.primary, c.accent]),
       ),
       clipBehavior: Clip.antiAlias,
-      child: CachedNetworkImage(
-        imageUrl: banner.imageUrl,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        errorWidget: (_, __, ___) => _FallbackBannerContent(),
-      ),
+      child: banner.imageUrl != null
+          ? CachedNetworkImage(
+              imageUrl: banner.imageUrl!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              errorWidget: (_, __, ___) => _FallbackBannerContent(),
+            )
+          : _FallbackBannerContent(),
     );
   }
 }
@@ -191,13 +213,14 @@ class _BannerCard extends StatelessWidget {
 class _FallbackBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       height: 180,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3949AB), Color(0xFF7B1FA2)],
+        gradient: LinearGradient(
+          colors: [c.primary, c.accent],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -210,6 +233,7 @@ class _FallbackBanner extends StatelessWidget {
 class _FallbackBannerContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -217,23 +241,16 @@ class _FallbackBannerContent extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('✨ Your Stars Are Aligned',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           const Text('Get your free Kundli reading today',
               style: TextStyle(color: Colors.white70, fontSize: 13)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.accent,
-              borderRadius: BorderRadius.circular(20),
-            ),
+            decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(20)),
             child: const Text('Get Started',
-                style: TextStyle(
-                    color: Colors.black, fontWeight: FontWeight.w600, fontSize: 13)),
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 13)),
           ),
         ],
       ),
@@ -247,9 +264,9 @@ const _features = [
   (icon: '♈', label: 'Horoscope', route: '/horoscope', color: Color(0xFF5C6BC0)),
   (icon: '🔮', label: 'Kundli', route: '/kundli', color: Color(0xFF7B1FA2)),
   (icon: '💑', label: 'Matching', route: '/kundli', color: Color(0xFFE91E63)),
-  (icon: '🌟', label: 'Talk Now', route: '/astrologers', color: Color(0xFFFF9800)),
-  (icon: '📅', label: 'Panchang', route: '/horoscope', color: Color(0xFF009688)),
-  (icon: '🃏', label: 'Tarot', route: '/horoscope', color: Color(0xFF673AB7)),
+  (icon: '🌟', label: 'Talk Now', route: '/astrologers', color: Color(0xFFFF6D00)),
+  (icon: '🪔', label: 'Puja', route: '/puja', color: Color(0xFF009688)),
+  (icon: '🛍️', label: 'AstroMall', route: '/astromall', color: Color(0xFF673AB7)),
   (icon: '🔢', label: 'Numerology', route: '/horoscope', color: Color(0xFF2196F3)),
   (icon: '🏠', label: 'Vastu', route: '/horoscope', color: Color(0xFF4CAF50)),
 ];
@@ -293,12 +310,7 @@ class _FeatureGrid extends StatelessWidget {
 }
 
 class _FeatureItem extends StatelessWidget {
-  const _FeatureItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
+  const _FeatureItem({required this.icon, required this.label, required this.color, required this.onTap});
   final String icon;
   final String label;
   final Color color;
@@ -306,6 +318,7 @@ class _FeatureItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -318,17 +331,12 @@ class _FeatureItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: color.withValues(alpha: 0.3)),
             ),
-            child: Center(
-              child: Text(icon, style: const TextStyle(fontSize: 26)),
-            ),
+            child: Center(child: Text(icon, style: const TextStyle(fontSize: 26))),
           ),
           const SizedBox(height: 6),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: c.textSecondary, fontSize: 11),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -346,8 +354,42 @@ class _TrendingAstrologers extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncData = ref.watch(trendingAstrologersProvider);
+    final trendingAsync = ref.watch(trendingAstrologersProvider);
+    final fallbackAsync = ref.watch(astrologersProvider);
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
+
+    // Resolve the list to show: trending if non-empty, else fallback astrologers
+    final isLoading = trendingAsync.isLoading ||
+        (trendingAsync.value?.isEmpty == true && fallbackAsync.isLoading);
+
+    if (isLoading) {
+      return _buildShimmer(context, c, tt);
+    }
+
+    final trendingList = trendingAsync.value ?? [];
+    List<TrendingAstrologer> items;
+
+    if (trendingList.isNotEmpty) {
+      items = trendingList;
+    } else {
+      // Trending is empty or errored — convert Astrologer list to TrendingAstrologer
+      final fallback = fallbackAsync.value ?? [];
+      if (fallback.isEmpty) return const SizedBox.shrink();
+      items = fallback
+          .take(10)
+          .map((a) => TrendingAstrologer(
+                id: a.id,
+                displayName: a.displayName,
+                profileImageUrl: a.profileImageUrl,
+                specialties: a.specialties,
+                ratingAvg: a.ratingAvg,
+                ratingCount: a.ratingCount,
+                pricePerMinChat: a.pricePerMinChat,
+                isOnline: a.isOnline,
+              ))
+          .toList();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,8 +402,7 @@ class _TrendingAstrologers extends ConsumerWidget {
               Text('Trending Astrologers', style: tt.titleMedium),
               TextButton(
                 onPressed: () => context.push(AppRoutes.astrologers),
-                child: Text('See all',
-                    style: tt.labelMedium?.copyWith(color: AppColors.primary)),
+                child: Text('See all', style: tt.labelMedium?.copyWith(color: c.primary)),
               ),
             ],
           ),
@@ -369,36 +410,56 @@ class _TrendingAstrologers extends ConsumerWidget {
         const SizedBox(height: 8),
         SizedBox(
           height: 210,
-          child: asyncData.when(
-            loading: () => ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 4,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, __) => Shimmer.fromColors(
-                baseColor: AppColors.surfaceDark,
-                highlightColor: AppColors.cardDark,
-                child: Container(
-                  width: 150,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceDark,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) =>
+                _AstrologerCard(astrologer: items[i]).animate().fadeIn(delay: Duration(milliseconds: 60 * i)),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildShimmer(BuildContext context, AppThemeColors c, TextTheme tt) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Trending Astrologers', style: tt.titleMedium),
+              TextButton(
+                onPressed: () => context.push(AppRoutes.astrologers),
+                child: Text('See all', style: tt.labelMedium?.copyWith(color: c.primary)),
               ),
-            ),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (astrologers) => ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: astrologers.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => _AstrologerCard(
-                astrologer: astrologers[i],
-              ).animate().fadeIn(delay: Duration(milliseconds: 60 * i)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 210,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: 4,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, __) => Shimmer.fromColors(
+              baseColor: c.surface,
+              highlightColor: c.card,
+              child: Container(
+                width: 150,
+                decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16)),
+              ),
             ),
           ),
         ),
+        const SizedBox(height: 20),
       ],
     );
   }
@@ -410,17 +471,17 @@ class _AstrologerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
-
     return GestureDetector(
       onTap: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
       child: Container(
         width: 150,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.cardDark,
+          color: c.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderDark),
+          border: Border.all(color: c.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,43 +508,35 @@ class _AstrologerCard extends StatelessWidget {
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: AppColors.success,
+                        color: c.success,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.cardDark, width: 1.5),
+                        border: Border.all(color: c.card, width: 1.5),
                       ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              astrologer.displayName,
-              style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(astrologer.displayName,
+                style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
             const SizedBox(height: 3),
             if (astrologer.specialties.isNotEmpty)
-              Text(
-                astrologer.specialties.take(2).join(' · '),
-                style: tt.labelSmall?.copyWith(color: AppColors.textSecondary),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              Text(astrologer.specialties.take(2).join(' · '),
+                  style: tt.labelSmall?.copyWith(color: c.textSecondary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.star_rounded, size: 13, color: AppColors.accent),
+                Icon(Icons.star_rounded, size: 13, color: c.accent),
                 const SizedBox(width: 3),
-                Text(
-                  astrologer.ratingAvg.toStringAsFixed(1),
-                  style: tt.labelSmall?.copyWith(color: AppColors.accent),
-                ),
+                Text(astrologer.ratingAvg.toStringAsFixed(1),
+                    style: tt.labelSmall?.copyWith(color: c.accent)),
                 const Spacer(),
-                Text(
-                  '${formatCurrency(astrologer.pricePerMinChat.toDouble())}/min',
-                  style: tt.labelSmall?.copyWith(color: AppColors.textSecondary, fontSize: 10),
-                ),
+                Text('₹${astrologer.pricePerMinChat}/min',
+                    style: tt.labelSmall?.copyWith(color: c.textSecondary, fontSize: 10)),
               ],
             ),
             const SizedBox(height: 8),
@@ -493,11 +546,11 @@ class _AstrologerCard extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => context.push(AppRoutes.astrologerDetail(astrologer.id)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: c.primary,
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('Chat', style: TextStyle(fontSize: 12)),
+                child: const Text('Chat', style: TextStyle(fontSize: 12, color: Colors.white)),
               ),
             ),
           ],
@@ -510,12 +563,11 @@ class _AstrologerCard extends StatelessWidget {
 class _AvatarPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       height: 80,
-      color: AppColors.surfaceDark,
-      child: const Center(
-        child: Icon(Icons.person_outline, color: AppColors.textDisabled, size: 32),
-      ),
+      color: c.surface,
+      child: Center(child: Icon(Icons.person_outline, color: c.textSecondary, size: 32)),
     );
   }
 }
@@ -528,50 +580,65 @@ class _StoriesRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncData = ref.watch(storiesProvider);
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('Daily Stories', style: tt.titleMedium),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 90,
-          child: asyncData.when(
-            loading: () => ListView.separated(
+    return asyncData.when(
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Daily Stories', style: tt.titleMedium),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 90,
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: 6,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, __) => Shimmer.fromColors(
-                baseColor: AppColors.surfaceDark,
-                highlightColor: AppColors.cardDark,
+                baseColor: c.surface,
+                highlightColor: c.card,
                 child: Column(children: [
-                  CircleAvatar(radius: 30, backgroundColor: AppColors.surfaceDark),
+                  CircleAvatar(radius: 30, backgroundColor: c.surface),
                   const SizedBox(height: 4),
-                  Container(width: 50, height: 10, color: AppColors.surfaceDark),
+                  Container(width: 50, height: 10, color: c.surface),
                 ]),
               ),
             ),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (stories) {
-              if (stories.isEmpty) return const SizedBox.shrink();
-              return ListView.separated(
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (stories) {
+        if (stories.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Daily Stories', style: tt.titleMedium),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 90,
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: stories.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (_, i) => _StoryBubble(story: stories[i])
-                    .animate()
-                    .fadeIn(delay: Duration(milliseconds: 50 * i)),
-              );
-            },
-          ),
-        ),
-      ],
+                itemBuilder: (_, i) =>
+                    _StoryBubble(story: stories[i]).animate().fadeIn(delay: Duration(milliseconds: 50 * i)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
     );
   }
 }
@@ -582,6 +649,7 @@ class _StoryBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
     return Column(
       children: [
@@ -590,8 +658,8 @@ class _StoryBubble extends StatelessWidget {
           height: 58,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [AppColors.accent, AppColors.primary],
+            gradient: LinearGradient(
+              colors: [c.accent, c.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -603,33 +671,31 @@ class _StoryBubble extends StatelessWidget {
                     imageUrl: story.thumbnailUrl,
                     fit: BoxFit.cover,
                     errorWidget: (_, __, ___) => Container(
-                      color: AppColors.surfaceDark,
-                      child: const Icon(Icons.auto_stories, color: AppColors.accent, size: 20),
+                      color: c.surface,
+                      child: Icon(Icons.auto_stories, color: c.accent, size: 20),
                     ),
                   )
                 : Container(
-                    color: AppColors.surfaceDark,
-                    child: const Icon(Icons.auto_stories, color: AppColors.accent, size: 20),
+                    color: c.surface,
+                    child: Icon(Icons.auto_stories, color: c.accent, size: 20),
                   ),
           ),
         ),
         const SizedBox(height: 4),
         SizedBox(
           width: 60,
-          child: Text(
-            story.title,
-            style: tt.labelSmall?.copyWith(fontSize: 10),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: Text(story.title,
+              style: tt.labelSmall?.copyWith(fontSize: 10),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
         ),
       ],
     );
   }
 }
 
-// ─── Learning Videos ─────────────────────────────────────────────────────
+// ─── Learning Videos ──────────────────────────────────────────────────────
 
 class _LearningVideos extends ConsumerWidget {
   const _LearningVideos();
@@ -637,62 +703,82 @@ class _LearningVideos extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncData = ref.watch(learningVideosProvider);
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Learn Astrology', style: tt.titleMedium),
-              TextButton(
-                onPressed: () {},
-                child: Text('See all',
-                    style: tt.labelMedium?.copyWith(color: AppColors.primary)),
-              ),
-            ],
+    return asyncData.when(
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Learn Astrology', style: tt.titleMedium),
+                TextButton(
+                  onPressed: () {},
+                  child: Text('See all', style: tt.labelMedium?.copyWith(color: c.primary)),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 160,
-          child: asyncData.when(
-            loading: () => ListView.separated(
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 160,
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: 4,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, __) => Shimmer.fromColors(
-                baseColor: AppColors.surfaceDark,
-                highlightColor: AppColors.cardDark,
+                baseColor: c.surface,
+                highlightColor: c.card,
                 child: Container(
                   width: 200,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceDark,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (videos) {
-              if (videos.isEmpty) return const SizedBox.shrink();
-              return ListView.separated(
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (videos) {
+        if (videos.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Learn Astrology', style: tt.titleMedium),
+                  TextButton(
+                    onPressed: () {},
+                    child: Text('See all', style: tt.labelMedium?.copyWith(color: c.primary)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 160,
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: videos.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (_, i) => _VideoCard(video: videos[i])
-                    .animate()
-                    .fadeIn(delay: Duration(milliseconds: 60 * i)),
-              );
-            },
-          ),
-        ),
-      ],
+                itemBuilder: (_, i) =>
+                    _VideoCard(video: videos[i]).animate().fadeIn(delay: Duration(milliseconds: 60 * i)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
     );
   }
 }
@@ -709,13 +795,14 @@ class _VideoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
     return Container(
       width: 200,
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: c.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: c.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -730,25 +817,21 @@ class _VideoCard extends StatelessWidget {
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
                         errorWidget: (_, __, ___) => Container(
-                          color: AppColors.surfaceDark,
-                          child: const Icon(Icons.play_circle_outline,
-                              color: AppColors.textDisabled, size: 40),
+                          color: c.surface,
+                          child: Icon(Icons.play_circle_outline, color: c.textSecondary, size: 40),
                         ),
                       )
                     : Container(
-                        color: AppColors.surfaceDark,
-                        child: const Icon(Icons.play_circle_outline,
-                            color: AppColors.textDisabled, size: 40),
+                        color: c.surface,
+                        child: Icon(Icons.play_circle_outline, color: c.textSecondary, size: 40),
                       ),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
+                const Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    child: Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.play_arrow, color: Colors.white, size: 20),
                     ),
-                    child: const Icon(Icons.play_arrow,
-                        color: Colors.white, size: 20),
                   ),
                 ),
                 if (video.durationSeconds > 0)
@@ -756,17 +839,10 @@ class _VideoCard extends StatelessWidget {
                     right: 6,
                     bottom: 6,
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        _fmtDuration(video.durationSeconds),
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 10),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)),
+                      child: Text(_fmtDuration(video.durationSeconds),
+                          style: const TextStyle(color: Colors.white, fontSize: 10)),
                     ),
                   ),
               ],
@@ -774,12 +850,10 @@ class _VideoCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Text(
-              video.title,
-              style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(video.title,
+                style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -800,19 +874,23 @@ class _HoroscopeTeaserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
+    final isDark = c.isDark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1A1040), Color(0xFF2D1B69)],
+          gradient: LinearGradient(
+            colors: isDark
+                ? [const Color(0xFF1A1040), const Color(0xFF2D1B69)]
+                : [c.primary.withValues(alpha: 0.08), c.accent.withValues(alpha: 0.12)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF5C4BA0).withValues(alpha: 0.6)),
+          border: Border.all(color: c.primary.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -828,35 +906,27 @@ class _HoroscopeTeaserCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Daily Horoscope',
-                            style: tt.titleMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700)),
-                        Text('Pick your sign to read today\'s cosmic forecast',
-                            style: tt.labelSmall
-                                ?.copyWith(color: Colors.white60)),
+                            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        Text("Pick your sign to read today's cosmic forecast",
+                            style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: () => context.push(AppRoutes.horoscope),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: AppColors.accent,
+                        color: c.accent,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text('View All',
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700)),
+                          style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],
               ),
             ),
-            // Sign grid — 2 rows of 6
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
               child: GridView.builder(
@@ -870,20 +940,16 @@ class _HoroscopeTeaserCard extends StatelessWidget {
                 ),
                 itemCount: _zodiacSigns.length,
                 itemBuilder: (_, i) {
-                  final (sym, slug) = _zodiacSigns[i];
+                  final (sym, _) = _zodiacSigns[i];
                   return GestureDetector(
                     onTap: () => context.push(AppRoutes.horoscope),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: c.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12)),
+                        border: Border.all(color: c.primary.withValues(alpha: 0.2)),
                       ),
-                      child: Center(
-                        child: Text(sym,
-                            style: const TextStyle(fontSize: 20)),
-                      ),
+                      child: Center(child: Text(sym, style: const TextStyle(fontSize: 20))),
                     ),
                   );
                 },
@@ -903,6 +969,7 @@ class _AiChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final tt = Theme.of(context).textTheme;
 
     return GestureDetector(
@@ -911,8 +978,8 @@ class _AiChatCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF3949AB), Color(0xFF7B1FA2)],
+          gradient: LinearGradient(
+            colors: [c.primary, c.primary.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -928,49 +995,26 @@ class _AiChatCard extends StatelessWidget {
                     children: [
                       const Text('✨', style: TextStyle(fontSize: 18)),
                       const SizedBox(width: 6),
-                      Text(
-                        'AI Astrologer',
-                        style: tt.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      Text('AI Astrologer',
+                          style: tt.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                       const SizedBox(width: 8),
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(10)),
                         child: const Text('AI',
-                            style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700)),
+                            style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Get instant answers about your horoscope, kundli & life questions',
-                    style: tt.bodySmall?.copyWith(color: Colors.white70),
-                  ),
+                  Text('Get instant answers about your horoscope, kundli & life questions',
+                      style: tt.bodySmall?.copyWith(color: Colors.white70)),
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Chat Now →',
-                      style: TextStyle(
-                        color: Color(0xFF3949AB),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                    child: Text('Chat Now →',
+                        style: TextStyle(color: c.primary, fontWeight: FontWeight.w700, fontSize: 13)),
                   ),
                 ],
               ),

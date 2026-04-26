@@ -1,0 +1,44 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "User App — Live Server",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=API_BASE_URL=https://api.astrology.qikbill.in/v1/customer",
+        "--dart-define=PUBLIC_API_BASE_URL=https://api.astrology.qikbill.in/v1/public",
+        "--dart-define=WS_BASE_URL=wss://api.astrology.qikbill.in",
+        "--dart-define=IS_DEV=true",
+        "--dart-define=ENABLE_CERT_PINNING=false"
+      ]
+    },
+    {
+      "name": "User App — Localhost",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=API_BASE_URL=http://127.0.0.1:3008/v1/customer",
+        "--dart-define=PUBLIC_API_BASE_URL=http://127.0.0.1:3008/v1/public",
+        "--dart-define=WS_BASE_URL=ws://127.0.0.1:3008",
+        "--dart-define=IS_DEV=true",
+        "--dart-define=ENABLE_CERT_PINNING=false"
+      ]
+    },
+    {
+      "name": "User App — Localhost (iOS Simulator)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=API_BASE_URL=http://127.0.0.1:3008/v1/customer",
+        "--dart-define=PUBLIC_API_BASE_URL=http://127.0.0.1:3008/v1/public",
+        "--dart-define=WS_BASE_URL=ws://127.0.0.1:3008",
+        "--dart-define=IS_DEV=true",
+        "--dart-define=ENABLE_CERT_PINNING=false"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/format_utils.dart';
 import '../data/notifications_repository.dart';
 import '../domain/notification_models.dart';
@@ -12,11 +12,13 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final asyncNotifications = ref.watch(notificationsNotifierProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
+        backgroundColor: c.bg,
         title: const Text('Notifications'),
         actions: [
           TextButton(
@@ -26,28 +28,28 @@ class NotificationsScreen extends ConsumerWidget {
             child: Text('Mark all read',
                 style: tt.labelMedium?.copyWith(
                   color: asyncNotifications.valueOrNull?.any((n) => !n.isRead) == true
-                      ? AppColors.primary
-                      : AppColors.textDisabled,
+                      ? c.primary
+                      : c.textSecondary.withValues(alpha: 0.4),
                 )),
           ),
         ],
       ),
       body: asyncNotifications.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: c.primary),
         ),
         error: (_, __) => _EmptyState(message: 'Could not load notifications.\nPull to refresh.'),
         data: (notifications) {
           if (notifications.isEmpty) return const _EmptyState();
           return RefreshIndicator(
             onRefresh: () => ref.refresh(notificationsNotifierProvider.future),
-            color: AppColors.primary,
-            backgroundColor: AppColors.cardDark,
+            color: c.primary,
+            backgroundColor: c.card,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: notifications.length,
               separatorBuilder: (_, __) =>
-                  const Divider(height: 1, color: AppColors.borderDark, indent: 64),
+                  Divider(height: 1, color: c.border, indent: 64),
               itemBuilder: (_, i) => _NotificationTile(
                 notification: notifications[i],
                 index: i,
@@ -90,13 +92,14 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final unread = !notification.isRead;
 
     return InkWell(
       onTap: onTap,
       child: Container(
         color: unread
-            ? AppColors.primary.withValues(alpha: 0.06)
+            ? c.primary.withValues(alpha: 0.06)
             : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
@@ -107,14 +110,14 @@ class _NotificationTile extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: unread
-                    ? AppColors.primary.withValues(alpha: 0.15)
-                    : AppColors.surfaceDark,
+                    ? c.primary.withValues(alpha: 0.15)
+                    : c.surface,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 _iconFor(notification.type),
                 size: 18,
-                color: unread ? AppColors.primary : AppColors.textSecondary,
+                color: unread ? c.primary : c.textSecondary,
               ),
             ),
             const SizedBox(width: 12),
@@ -137,8 +140,8 @@ class _NotificationTile extends StatelessWidget {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
+                          decoration: BoxDecoration(
+                            color: c.primary,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -148,8 +151,7 @@ class _NotificationTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       notification.body!,
-                      style: tt.bodySmall
-                          ?.copyWith(color: AppColors.textSecondary),
+                      style: tt.bodySmall?.copyWith(color: c.textSecondary),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -157,8 +159,9 @@ class _NotificationTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     timeAgo(notification.createdAt),
-                    style: tt.labelSmall
-                        ?.copyWith(color: AppColors.textDisabled, fontSize: 10),
+                    style: tt.labelSmall?.copyWith(
+                        color: c.textSecondary.withValues(alpha: 0.5),
+                        fontSize: 10),
                   ),
                 ],
               ),
@@ -177,6 +180,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -187,7 +191,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             message ?? "You're all caught up!\nNew notifications will appear here.",
-            style: tt.bodySmall?.copyWith(color: AppColors.textSecondary),
+            style: tt.bodySmall?.copyWith(color: c.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],

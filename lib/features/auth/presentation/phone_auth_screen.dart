@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import 'auth_controller.dart';
@@ -50,13 +49,13 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
   }
 
   void _showError(String msg) {
-    Get.showSnackbar(GetSnackBar(
-      message: msg,
-      backgroundColor: AppColors.error,
-      borderRadius: 12,
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: context.colors.error,
+      behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       duration: const Duration(seconds: 3),
-      snackPosition: SnackPosition.BOTTOM,
     ));
   }
 
@@ -65,6 +64,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
     final state = ref.watch(authControllerProvider);
     final tt = Theme.of(context).textTheme;
     final size = MediaQuery.sizeOf(context);
+    final c = context.colors;
 
     ref.listen(authControllerProvider, (prev, next) {
       if (next.error != null && next.error != prev?.error) {
@@ -75,7 +75,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
+          // Background gradient — intentionally fixed dark purple for brand identity
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -95,7 +95,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: c.primary.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -107,7 +107,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.accent.withValues(alpha: 0.05),
+                color: c.accent.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -127,8 +127,8 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.accent],
+                          gradient: LinearGradient(
+                            colors: [c.primary, c.accent],
                           ),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -139,7 +139,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       Text('Astrobless',
                           style: tt.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: Colors.white,
                             letterSpacing: 0.5,
                           )),
                     ],
@@ -149,7 +149,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
 
                   Text('Welcome back',
                           style: tt.headlineMedium?.copyWith(
-                            color: AppColors.textPrimary,
+                            color: Colors.white,
                             fontWeight: FontWeight.w700,
                             height: 1.2,
                           ))
@@ -160,7 +160,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                   Text(
                     'Sign in to continue your cosmic journey',
                     style: tt.bodyMedium
-                        ?.copyWith(color: AppColors.textSecondary),
+                        ?.copyWith(color: Colors.white60),
                   ).animate().fadeIn(delay: 150.ms),
 
                   SizedBox(height: size.height * 0.05),
@@ -173,7 +173,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                       children: [
                         Text('Mobile Number',
                                 style: tt.labelMedium?.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: Colors.white60,
                                     letterSpacing: 0.3))
                             .animate()
                             .fadeIn(delay: 200.ms),
@@ -187,11 +187,25 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                           ],
                           validator: Validators.phone,
                           style: tt.bodyLarge
-                              ?.copyWith(color: AppColors.textPrimary),
+                              ?.copyWith(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: '98765 43210',
-                            hintStyle: TextStyle(
-                                color: AppColors.textDisabled, fontSize: 16),
+                            hintStyle: const TextStyle(
+                                color: Colors.white38, fontSize: 16),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.08),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: c.primary, width: 2),
+                            ),
                             prefixIcon: Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 14),
@@ -203,13 +217,13 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                                   const SizedBox(width: 6),
                                   Text('+91',
                                       style: tt.bodyLarge?.copyWith(
-                                          color: AppColors.textPrimary,
+                                          color: Colors.white,
                                           fontWeight: FontWeight.w600)),
                                   const SizedBox(width: 4),
                                   Container(
                                     width: 1,
                                     height: 20,
-                                    color: AppColors.borderDark,
+                                    color: Colors.white24,
                                   ),
                                 ],
                               ),
@@ -236,15 +250,15 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                   Row(
                     children: [
                       Expanded(
-                          child: Divider(color: AppColors.borderDark, height: 1)),
+                          child: Divider(color: Colors.white24, height: 1)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text('or continue with',
                             style: tt.labelSmall
-                                ?.copyWith(color: AppColors.textDisabled)),
+                                ?.copyWith(color: Colors.white38)),
                       ),
                       Expanded(
-                          child: Divider(color: AppColors.borderDark, height: 1)),
+                          child: Divider(color: Colors.white24, height: 1)),
                     ],
                   ).animate().fadeIn(delay: 350.ms),
 
@@ -266,7 +280,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                           child: _SocialButton(
                             label: 'Apple',
                             icon: const Icon(Icons.apple,
-                                color: AppColors.textPrimary, size: 22),
+                                color: Colors.white, size: 22),
                             onPressed: state.isLoading ? null : _appleSignIn,
                           ),
                         ),
@@ -281,7 +295,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     child: TextButton(
                       onPressed: () => context.push(AppRoutes.authEmail),
                       style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primary,
+                        foregroundColor: c.primary,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 12),
                       ),
@@ -292,7 +306,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                           const SizedBox(width: 8),
                           Text('Use Email instead',
                               style: tt.bodyMedium
-                                  ?.copyWith(color: AppColors.primary)),
+                                  ?.copyWith(color: c.primary)),
                         ],
                       ),
                     ),
@@ -304,7 +318,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
                     child: Text(
                       'By continuing, you agree to our Terms of Service\nand Privacy Policy',
                       style: tt.labelSmall
-                          ?.copyWith(color: AppColors.textDisabled),
+                          ?.copyWith(color: Colors.white38),
                       textAlign: TextAlign.center,
                     ),
                   ).animate().fadeIn(delay: 500.ms),
@@ -334,9 +348,9 @@ class _SocialButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        side: BorderSide(color: AppColors.borderDark, width: 1.5),
+        side: BorderSide(color: Colors.white24, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        backgroundColor: AppColors.surfaceDark.withValues(alpha: 0.5),
+        backgroundColor: Colors.white.withValues(alpha: 0.06),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -345,7 +359,7 @@ class _SocialButton extends StatelessWidget {
           const SizedBox(width: 8),
           Text(label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.textPrimary,
+                    color: Colors.white,
                     fontWeight: FontWeight.w600,
                   )),
         ],
@@ -390,8 +404,8 @@ class _GoogleLogoPainter extends CustomPainter {
     paint.color = const Color(0xFF34A853);
     canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
         3.3, 1.1, true, paint);
-    // White center
-    paint.color = AppColors.bgDark;
+    // Dark center to match auth screen background
+    paint.color = const Color(0xFF0D0B1E);
     canvas.drawCircle(center, radius * 0.55, paint);
     // Blue right rectangle
     paint.color = const Color(0xFF4285F4);

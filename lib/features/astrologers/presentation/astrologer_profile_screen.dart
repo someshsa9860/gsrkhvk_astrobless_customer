@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/astrologers_repository.dart';
 
 class AstrologerProfileScreen extends ConsumerWidget {
@@ -15,18 +15,18 @@ class AstrologerProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final astrologerAsync = ref.watch(astrologerProvider(astrologerId));
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       body: astrologerAsync.when(
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.accent)),
+        loading: () => Center(
+            child: CircularProgressIndicator(color: c.accent)),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline,
-                  color: AppColors.error, size: 40),
+              Icon(Icons.error_outline, color: c.error, size: 40),
               const SizedBox(height: 12),
               Text('Failed to load profile', style: tt.bodyMedium),
               const SizedBox(height: 8),
@@ -43,7 +43,7 @@ class AstrologerProfileScreen extends ConsumerWidget {
             SliverAppBar(
               expandedHeight: 280,
               pinned: true,
-              backgroundColor: AppColors.bgDark,
+              backgroundColor: c.bg,
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   fit: StackFit.expand,
@@ -55,9 +55,8 @@ class AstrologerProfileScreen extends ConsumerWidget {
                       )
                     else
                       Container(
-                        color: AppColors.surfaceDark,
-                        child: const Icon(Icons.person,
-                            size: 80, color: AppColors.textSecondary),
+                        color: c.surface,
+                        child: Icon(Icons.person, size: 80, color: c.textSecondary),
                       ),
                     Container(
                       decoration: BoxDecoration(
@@ -66,7 +65,7 @@ class AstrologerProfileScreen extends ConsumerWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            AppColors.bgDark.withValues(alpha: 0.9),
+                            c.bg.withValues(alpha: 0.95),
                           ],
                           stops: const [0.5, 1.0],
                         ),
@@ -83,19 +82,18 @@ class AstrologerProfileScreen extends ConsumerWidget {
                             children: [
                               Text(a.displayName,
                                   style: tt.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.w800)),
+                                      fontWeight: FontWeight.w800,
+                                      color: c.textPrimary)),
                               const SizedBox(width: 8),
                               if (a.isOnline)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppColors.success
-                                        .withValues(alpha: 0.2),
+                                    color: c.success.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                        color: AppColors.success
-                                            .withValues(alpha: 0.4)),
+                                        color: c.success.withValues(alpha: 0.4)),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -103,15 +101,15 @@ class AstrologerProfileScreen extends ConsumerWidget {
                                       Container(
                                         width: 6,
                                         height: 6,
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.success,
+                                        decoration: BoxDecoration(
+                                          color: c.success,
                                           shape: BoxShape.circle,
                                         ),
                                       ),
                                       const SizedBox(width: 4),
                                       Text('Online',
-                                          style: tt.labelSmall?.copyWith(
-                                              color: AppColors.success)),
+                                          style: tt.labelSmall
+                                              ?.copyWith(color: c.success)),
                                     ],
                                   ),
                                 ),
@@ -120,8 +118,7 @@ class AstrologerProfileScreen extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(
                             a.specialties.join(' • '),
-                            style: tt.bodySmall?.copyWith(
-                                color: AppColors.textSecondary),
+                            style: tt.bodySmall?.copyWith(color: c.textSecondary),
                           ),
                         ],
                       ),
@@ -147,8 +144,7 @@ class AstrologerProfileScreen extends ConsumerWidget {
                       Text('About', style: tt.titleSmall),
                       const SizedBox(height: 8),
                       Text(a.bio!,
-                          style: tt.bodyMedium
-                              ?.copyWith(color: AppColors.textSecondary)),
+                          style: tt.bodyMedium?.copyWith(color: c.textSecondary)),
                       const SizedBox(height: 20),
                     ],
                     Text('Languages', style: tt.titleSmall),
@@ -156,9 +152,7 @@ class AstrologerProfileScreen extends ConsumerWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: a.languages
-                          .map((l) => _Tag(label: l))
-                          .toList(),
+                      children: a.languages.map((l) => _Tag(label: l)).toList(),
                     ),
                     const SizedBox(height: 20),
                     Text('Specialties', style: tt.titleSmall),
@@ -204,12 +198,13 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: c.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: c.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -218,7 +213,7 @@ class _StatsRow extends StatelessWidget {
             value: rating.toStringAsFixed(1),
             label: 'Rating',
             icon: Icons.star_rounded,
-            iconColor: AppColors.accent,
+            iconColor: c.accent,
           ),
           _VertDiv(),
           _Stat(
@@ -250,28 +245,28 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(
-      {required this.value,
-      required this.label,
-      required this.icon,
-      this.iconColor = AppColors.textSecondary});
+  const _Stat({
+    required this.value,
+    required this.label,
+    required this.icon,
+    this.iconColor,
+  });
   final String value;
   final String label;
   final IconData icon;
-  final Color iconColor;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     return Column(
       children: [
-        Icon(icon, color: iconColor, size: 18),
+        Icon(icon, color: iconColor ?? c.textSecondary, size: 18),
         const SizedBox(height: 4),
         Text(value,
             style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-        Text(label,
-            style:
-                tt.labelSmall?.copyWith(color: AppColors.textSecondary)),
+        Text(label, style: tt.labelSmall?.copyWith(color: c.textSecondary)),
       ],
     );
   }
@@ -280,8 +275,7 @@ class _Stat extends StatelessWidget {
 class _VertDiv extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-        height: 40, width: 1, color: AppColors.borderDark);
+    return Container(height: 40, width: 1, color: context.colors.border);
   }
 }
 
@@ -292,21 +286,20 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isPrimary
-            ? AppColors.primary.withValues(alpha: 0.15)
-            : AppColors.cardDark,
+        color: isPrimary ? c.primary.withValues(alpha: 0.15) : c.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isPrimary ? AppColors.primary.withValues(alpha: 0.4) : AppColors.borderDark,
+          color: isPrimary ? c.primary.withValues(alpha: 0.4) : c.border,
         ),
       ),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: isPrimary ? AppColors.primary : AppColors.textSecondary,
+              color: isPrimary ? c.primary : c.textSecondary,
             ),
       ),
     );
@@ -330,14 +323,15 @@ class _PriceAndCTA extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final unavailable = !isOnline || isBusy;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: c.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderDark),
+        border: Border.all(color: c.border),
       ),
       child: Column(
         children: [
@@ -348,13 +342,11 @@ class _PriceAndCTA extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Chat rate',
-                        style: tt.labelSmall
-                            ?.copyWith(color: AppColors.textSecondary)),
+                        style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                     Text(
                       '₹${chatPrice.toStringAsFixed(0)}/min',
                       style: tt.titleMedium?.copyWith(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w800),
+                          color: c.accent, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
@@ -364,13 +356,11 @@ class _PriceAndCTA extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Call rate',
-                        style: tt.labelSmall
-                            ?.copyWith(color: AppColors.textSecondary)),
+                        style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                     Text(
                       '₹${callPrice.toStringAsFixed(0)}/min',
                       style: tt.titleMedium?.copyWith(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w800),
+                          color: c.accent, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
@@ -383,14 +373,13 @@ class _PriceAndCTA extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: AppColors.borderDark,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
                   isBusy ? 'Currently Busy' : 'Currently Offline',
-                  style: tt.bodyMedium
-                      ?.copyWith(color: AppColors.textDisabled),
+                  style: tt.bodyMedium?.copyWith(color: c.textSecondary),
                 ),
               ),
             )
@@ -399,11 +388,13 @@ class _PriceAndCTA extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => context
-                        .push(AppRoutes.consultationChat(astrologerId)),
+                    onPressed: () =>
+                        context.push(AppRoutes.consultationChat(astrologerId)),
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('Chat'),
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: c.primary,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -416,8 +407,8 @@ class _PriceAndCTA extends StatelessWidget {
                     label: const Text('Call'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      foregroundColor: AppColors.accent,
-                      side: const BorderSide(color: AppColors.accent),
+                      foregroundColor: c.accent,
+                      side: BorderSide(color: c.accent),
                     ),
                   ),
                 ),

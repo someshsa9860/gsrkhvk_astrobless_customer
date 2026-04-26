@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/auth/auth_notifier.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/profile_repository.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -13,9 +13,10 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(profileNotifierProvider);
+    final c = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
         title: const Text('My Profile'),
         actions: [
@@ -27,8 +28,8 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: profileAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: c.primary),
         ),
         error: (_, __) => _ProfileBody(name: null, phone: null, email: null, imageUrl: null),
         data: (profile) => _ProfileBody(
@@ -58,6 +59,7 @@ class _ProfileBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -67,12 +69,12 @@ class _ProfileBody extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 44,
-                backgroundColor: AppColors.surfaceDark,
+                backgroundColor: c.surface,
                 backgroundImage: imageUrl != null
                     ? CachedNetworkImageProvider(imageUrl!)
                     : null,
                 child: imageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: AppColors.textSecondary)
+                    ? Icon(Icons.person, size: 40, color: c.textSecondary)
                     : null,
               ),
               const SizedBox(height: 12),
@@ -81,14 +83,14 @@ class _ProfileBody extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   phone ?? email ?? '',
-                  style: tt.bodySmall?.copyWith(color: AppColors.textSecondary),
+                  style: tt.bodySmall?.copyWith(color: c.textSecondary),
                 ),
               ],
               const SizedBox(height: 4),
               GestureDetector(
                 onTap: () => context.push(AppRoutes.profileEdit),
                 child: Text('Tap to edit profile',
-                    style: tt.bodySmall?.copyWith(color: AppColors.primary)),
+                    style: tt.bodySmall?.copyWith(color: c.primary)),
               ),
             ],
           ),
@@ -117,6 +119,24 @@ class _ProfileBody extends ConsumerWidget {
           ),
         ]),
         const SizedBox(height: 16),
+        _Section(title: 'Services', items: [
+          _MenuItem(
+            icon: Icons.self_improvement,
+            label: 'Puja Bookings',
+            onTap: () => context.push(AppRoutes.puja),
+          ),
+          _MenuItem(
+            icon: Icons.shopping_bag_outlined,
+            label: 'AstroMall',
+            onTap: () => context.push(AppRoutes.astromall),
+          ),
+          _MenuItem(
+            icon: Icons.favorite_border,
+            label: 'Refer & Earn',
+            onTap: () => context.push(AppRoutes.referral),
+          ),
+        ]),
+        const SizedBox(height: 16),
         _Section(title: 'Preferences', items: [
           _MenuItem(
             icon: Icons.notifications_outlined,
@@ -131,21 +151,25 @@ class _ProfileBody extends ConsumerWidget {
         ]),
         const SizedBox(height: 16),
         _Section(title: 'Support', items: [
-          _MenuItem(icon: Icons.help_outline, label: 'Help & FAQ', onTap: () {}),
+          _MenuItem(
+            icon: Icons.help_outline,
+            label: 'Help & Support',
+            onTap: () => context.push(AppRoutes.support),
+          ),
           _MenuItem(icon: Icons.privacy_tip_outlined, label: 'Privacy Policy', onTap: () {}),
           _MenuItem(icon: Icons.description_outlined, label: 'Terms of Service', onTap: () {}),
         ]),
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
+            color: c.card,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderDark),
+            border: Border.all(color: c.border),
           ),
           child: ListTile(
-            leading: const Icon(Icons.logout, color: AppColors.error),
+            leading: Icon(Icons.logout, color: c.error),
             title: Text('Sign Out',
-                style: tt.bodyMedium?.copyWith(color: AppColors.error)),
+                style: tt.bodyMedium?.copyWith(color: c.error)),
             onTap: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
             },
@@ -164,6 +188,7 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -173,13 +198,13 @@ class _Section extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .labelMedium
-                  ?.copyWith(color: AppColors.textSecondary)),
+                  ?.copyWith(color: c.textSecondary)),
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
+            color: c.card,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderDark),
+            border: Border.all(color: c.border),
           ),
           child: Column(
             children: items.asMap().entries.map((e) {
@@ -188,7 +213,7 @@ class _Section extends StatelessWidget {
                 children: [
                   e.value,
                   if (!isLast)
-                    const Divider(height: 1, indent: 52, color: AppColors.borderDark),
+                    Divider(height: 1, indent: 52, color: c.border),
                 ],
               );
             }).toList(),
@@ -207,10 +232,11 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary, size: 20),
+      leading: Icon(icon, color: c.textSecondary, size: 20),
       title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textDisabled, size: 18),
+      trailing: Icon(Icons.chevron_right, color: c.textSecondary.withValues(alpha: 0.5), size: 18),
       onTap: onTap,
       dense: true,
     );

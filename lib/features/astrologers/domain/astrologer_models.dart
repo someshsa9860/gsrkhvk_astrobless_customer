@@ -34,7 +34,7 @@ class Astrologer {
   factory Astrologer.fromJson(Map<String, dynamic> j) => Astrologer(
         id: j['id'] as String,
         displayName: j['displayName'] as String,
-        profileImageUrl: j['profileImageUrl'] as String?,
+        profileImageUrl: (j['profileImageUrl'] ?? j['profileImageKey']) as String?,
         bio: j['bio'] as String?,
         specialties: (j['specialties'] as List<dynamic>?)
                 ?.map((e) => e as String)
@@ -49,7 +49,7 @@ class Astrologer {
         pricePerMinCall: (j['pricePerMinCall'] as num?)?.toDouble() ?? 0.0,
         isOnline: (j['isOnline'] as bool?) ?? false,
         isBusy: (j['isBusy'] as bool?) ?? false,
-        ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
+        ratingAvg: num.tryParse(j['ratingAvg']?.toString() ?? '0')?.toDouble() ?? 0,
         ratingCount: (j['ratingCount'] as int?) ?? 0,
         totalConsultations: (j['totalConsultations'] as int?) ?? 0,
       );

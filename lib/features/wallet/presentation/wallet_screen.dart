@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/format_utils.dart';
 import '../data/wallet_repository.dart';
 
@@ -46,6 +46,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     if (_topupInProgress) return;
     setState(() => _topupInProgress = true);
 
+    // Capture theme color before async gap
+    final primaryHex = context.colors.primary.toARGB32().toRadixString(16).substring(2).toUpperCase();
+
     try {
       final idempotencyKey = const Uuid().v4();
       final data = await ref.read(apiClientProvider).initiateTopup(
@@ -63,7 +66,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
         'description': 'Wallet Top-up',
         'order_id': payload['orderId'] ?? payload['order_id'] ?? '',
         'prefill': payload['prefill'] ?? {},
-        'theme': {'color': '#5C6BC0'},
+        'theme': {'color': '#$primaryHex'},
       };
 
       _razorpay.open(options);
@@ -73,7 +76,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to initiate payment: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: context.colors.error,
           ),
         );
       }
@@ -82,13 +85,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
   void _onPaymentSuccess(PaymentSuccessResponse response) {
     setState(() => _topupInProgress = false);
-    // Invalidate wallet cache so balance refreshes automatically
     ref.invalidate(walletProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment successful! Wallet updated.'),
-          backgroundColor: AppColors.success,
+        SnackBar(
+          content: const Text('Payment successful! Wallet updated.'),
+          backgroundColor: context.colors.success,
         ),
       );
     }
@@ -100,7 +102,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Payment failed: ${response.message ?? 'Unknown error'}'),
-          backgroundColor: AppColors.error,
+          backgroundColor: context.colors.error,
         ),
       );
     }
@@ -113,7 +115,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   void _showTopupSheet() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.cardDark,
+      backgroundColor: context.colors.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -126,9 +128,10 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final walletAsync = ref.watch(walletProvider);
     final txAsync = ref.watch(walletTransactionsProvider);
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(title: const Text('My Wallet')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -216,13 +219,13 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
           // ── Transaction list ─────────────────────────────────────────────
           txAsync.when(
-            loading: () => const Center(
+            loading: () => Center(
                 child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(color: AppColors.accent),
+              padding: const EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: c.accent),
             )),
             error: (_, __) => Text('Failed to load transactions',
-                style: tt.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                style: tt.bodySmall?.copyWith(color: c.textSecondary)),
             data: (txs) {
               if (txs.isEmpty) {
                 return Center(
@@ -230,7 +233,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     padding: const EdgeInsets.all(32),
                     child: Text('No transactions yet',
                         style: tt.bodySmall
-                            ?.copyWith(color: AppColors.textSecondary)),
+                            ?.copyWith(color: c.textSecondary)),
                   ),
                 );
               }
@@ -242,9 +245,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.cardDark,
+                      color: c.card,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.borderDark),
+                      border: Border.all(color: c.border),
                     ),
                     child: Row(
                       children: [
@@ -253,8 +256,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                           height: 40,
                           decoration: BoxDecoration(
                             color: (isCredit
-                                    ? AppColors.success
-                                    : AppColors.error)
+                                    ? c.success
+                                    : c.error)
                                 .withValues(alpha: 0.10),
                             shape: BoxShape.circle,
                           ),
@@ -263,8 +266,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                                 ? Icons.arrow_downward_rounded
                                 : Icons.arrow_upward_rounded,
                             color: isCredit
-                                ? AppColors.success
-                                : AppColors.error,
+                                ? c.success
+                                : c.error,
                             size: 18,
                           ),
                         ),
@@ -279,10 +282,10 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                               if (tx.notes != null)
                                 Text(tx.notes!,
                                     style: tt.labelSmall?.copyWith(
-                                        color: AppColors.textSecondary)),
+                                        color: c.textSecondary)),
                               Text(formatDateTime(tx.createdAt),
                                   style: tt.labelSmall?.copyWith(
-                                      color: AppColors.textDisabled)),
+                                      color: c.textSecondary.withValues(alpha: 0.5))),
                             ],
                           ),
                         ),
@@ -290,8 +293,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                           '${isCredit ? '+' : '-'}${formatCurrency(tx.amount)}',
                           style: tt.titleSmall?.copyWith(
                             color: isCredit
-                                ? AppColors.success
-                                : AppColors.error,
+                                ? c.success
+                                : c.error,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -316,6 +319,7 @@ class _TopupSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -326,7 +330,7 @@ class _TopupSheet extends StatelessWidget {
           Text('Add Money', style: tt.titleMedium),
           const SizedBox(height: 4),
           Text('Select an amount to add to your wallet',
-              style: tt.bodySmall?.copyWith(color: AppColors.textSecondary)),
+              style: tt.bodySmall?.copyWith(color: c.textSecondary)),
           const SizedBox(height: 20),
           GridView.count(
             crossAxisCount: 2,
@@ -342,8 +346,8 @@ class _TopupSheet extends StatelessWidget {
                   onSelect(opt.amount);
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  side: const BorderSide(color: AppColors.borderDark),
+                  foregroundColor: c.textPrimary,
+                  side: BorderSide(color: c.border),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),

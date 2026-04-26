@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/services/upload_service.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../data/profile_repository.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -95,9 +95,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
     final profile = ref.watch(profileNotifierProvider).valueOrNull;
 
-    // Seed fields once data arrives if not yet loaded manually
     if (profile != null && !_loaded) {
       _nameCtrl.text = profile.name ?? '';
       _emailCtrl.text = profile.email ?? '';
@@ -107,18 +107,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final existingImageUrl = profile?.profileImageUrl;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDark,
+      backgroundColor: c.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.bgDark,
+        backgroundColor: c.bg,
         title: const Text('Edit Profile'),
         actions: [
           TextButton(
             onPressed: (_isSaving || _isUploadingPhoto) ? null : _save,
             child: _isSaving
-                ? const SizedBox(
+                ? SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: c.primary),
                   )
                 : const Text('Save'),
           ),
@@ -132,14 +132,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 48,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  backgroundColor: c.primary.withValues(alpha: 0.15),
                   backgroundImage: _pickedPhoto != null
                       ? FileImage(_pickedPhoto!) as ImageProvider
                       : (existingImageUrl != null
                           ? NetworkImage(existingImageUrl)
                           : null),
                   child: (_pickedPhoto == null && existingImageUrl == null)
-                      ? const Icon(Icons.person, size: 44, color: AppColors.primary)
+                      ? Icon(Icons.person, size: 44, color: c.primary)
                       : null,
                 ),
                 if (_isUploadingPhoto)
@@ -147,7 +147,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     child: CircularProgressIndicator(
                       value: _uploadProgress > 0 ? _uploadProgress : null,
                       strokeWidth: 3,
-                      color: AppColors.primary,
+                      color: c.primary,
                     ),
                   ),
                 if (_uploadedTempKey != null && !_isUploadingPhoto)
@@ -156,8 +156,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     right: 2,
                     child: Container(
                       padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
+                      decoration: BoxDecoration(
+                        color: c.success,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.check, size: 11, color: Colors.white),
@@ -172,10 +172,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
                         color: _isUploadingPhoto
-                            ? AppColors.primary.withValues(alpha: 0.5)
-                            : AppColors.primary,
+                            ? c.primary.withValues(alpha: 0.5)
+                            : c.primary,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.bgDark, width: 2),
+                        border: Border.all(color: c.bg, width: 2),
                       ),
                       child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
                     ),
@@ -186,18 +186,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           const SizedBox(height: 32),
 
-          _buildLabel(tt, 'Full Name'),
+          Text('Full Name',
+              style: tt.labelMedium?.copyWith(color: c.textSecondary)),
           const SizedBox(height: 6),
           _buildTextField(
+            context: context,
             controller: _nameCtrl,
             hint: 'Enter your name',
             keyboardType: TextInputType.name,
           ),
           const SizedBox(height: 20),
 
-          _buildLabel(tt, 'Email'),
+          Text('Email',
+              style: tt.labelMedium?.copyWith(color: c.textSecondary)),
           const SizedBox(height: 6),
           _buildTextField(
+            context: context,
             controller: _emailCtrl,
             hint: 'Enter your email',
             keyboardType: TextInputType.emailAddress,
@@ -211,7 +215,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             child: ElevatedButton(
               onPressed: (_isSaving || _isUploadingPhoto) ? null : _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: c.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -236,41 +240,39 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildLabel(TextTheme tt, String text) => Text(
-        text,
-        style: tt.labelMedium?.copyWith(color: AppColors.textSecondary),
-      );
-
   Widget _buildTextField({
+    required BuildContext context,
     required TextEditingController controller,
     required String hint,
     TextInputType keyboardType = TextInputType.text,
-  }) =>
-      TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.textDisabled),
-          filled: true,
-          fillColor: AppColors.cardDark,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.borderDark),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.borderDark),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.primary),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  }) {
+    final c = context.colors;
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: c.textPrimary),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: c.textSecondary.withValues(alpha: 0.5)),
+        filled: true,
+        fillColor: c.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: c.border),
         ),
-      );
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: c.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: c.primary),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+    );
+  }
 
   Future<void> _save() async {
     setState(() => _isSaving = true);

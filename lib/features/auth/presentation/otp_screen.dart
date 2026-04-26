@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pinput/pinput.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/app_button.dart';
 import 'auth_controller.dart';
 
@@ -135,27 +135,28 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
     final tt = Theme.of(context).textTheme;
+    final c = context.colors;
 
     final basePinTheme = PinTheme(
       width: 52,
       height: 60,
       textStyle: tt.headlineSmall?.copyWith(
-        color: AppColors.textPrimary,
+        color: c.textPrimary,
         fontWeight: FontWeight.w600,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: c.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderDark, width: 1.5),
+        border: Border.all(color: c.border, width: 1.5),
       ),
     );
 
     final focusedTheme = basePinTheme.copyWith(
       decoration: basePinTheme.decoration!.copyWith(
-        border: Border.all(color: AppColors.primary, width: 2),
+        border: Border.all(color: c.primary, width: 2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.2),
+            color: c.primary.withValues(alpha: 0.2),
             blurRadius: 8,
             spreadRadius: 1,
           ),
@@ -165,8 +166,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
 
     final errorTheme = basePinTheme.copyWith(
       decoration: basePinTheme.decoration!.copyWith(
-        border: Border.all(color: AppColors.error, width: 2),
-        color: AppColors.error.withValues(alpha: 0.08),
+        border: Border.all(color: c.error, width: 2),
+        color: c.error.withValues(alpha: 0.08),
       ),
     );
 
@@ -175,8 +176,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: c.textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -192,7 +193,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
               Text(
                 widget.type == 'phone' ? 'Verify your\nnumber' : 'Enter\nOTP',
                 style: tt.headlineMedium?.copyWith(
-                  color: AppColors.textPrimary,
+                  color: c.textPrimary,
                   fontWeight: FontWeight.w700,
                   height: 1.2,
                 ),
@@ -202,13 +203,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
 
               RichText(
                 text: TextSpan(
-                  style: tt.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                  style: tt.bodyMedium?.copyWith(color: c.textSecondary),
                   children: [
                     const TextSpan(text: 'We sent a 6-digit code to\n'),
                     TextSpan(
                       text: _maskedIdentifier,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: c.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -236,9 +237,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                         ? errorTheme
                         : basePinTheme.copyWith(
                             decoration: basePinTheme.decoration!.copyWith(
-                              color: AppColors.primary.withValues(alpha: 0.12),
+                              color: c.primary.withValues(alpha: 0.12),
                               border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.5)),
+                                  color: c.primary.withValues(alpha: 0.5)),
                             ),
                           ),
                     onCompleted: _verify,
@@ -252,7 +253,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                           width: 22,
                           height: 2,
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
+                            color: c.primary,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -276,14 +277,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.error_outline,
-                                color: AppColors.error, size: 16),
+                            Icon(Icons.error_outline,
+                                color: c.error, size: 16),
                             const SizedBox(width: 6),
                             Text(
                               ref.read(authControllerProvider).error ??
                                   'Incorrect code',
                               style: tt.bodySmall
-                                  ?.copyWith(color: AppColors.error),
+                                  ?.copyWith(color: c.error),
                             ),
                           ],
                         ),
@@ -313,14 +314,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                           key: const ValueKey('countdown'),
                           text: TextSpan(
                             style: tt.bodyMedium
-                                ?.copyWith(color: AppColors.textSecondary),
+                                ?.copyWith(color: c.textSecondary),
                             children: [
                               const TextSpan(text: 'Resend code in '),
                               TextSpan(
                                 text:
                                     '0:${_resendSeconds.toString().padLeft(2, '0')}',
-                                style: const TextStyle(
-                                  color: AppColors.primary,
+                                style: TextStyle(
+                                  color: c.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -331,7 +332,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen>
                           key: const ValueKey('resend'),
                           onPressed: state.isLoading ? null : _resend,
                           style: TextButton.styleFrom(
-                            foregroundColor: AppColors.primary,
+                            foregroundColor: c.primary,
                           ),
                           child: const Text('Resend OTP'),
                         ),
