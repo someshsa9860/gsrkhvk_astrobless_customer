@@ -205,7 +205,7 @@ class _ConsultationTile extends StatelessWidget {
               children: [
                 if (consultation.totalCharged > 0)
                   Text(
-                    formatCurrency(consultation.totalCharged),
+                    formatCurrency(consultation.totalCharged.toDouble()),
                     style: tt.bodySmall?.copyWith(
                       color: AppColors.error,
                       fontWeight: FontWeight.w600,

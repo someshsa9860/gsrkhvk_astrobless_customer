@@ -339,7 +339,7 @@ class _CallSearchTile extends StatelessWidget {
                               ?.copyWith(color: AppColors.accent)),
                       const SizedBox(width: 8),
                       Text(
-                        '${formatCurrency(astrologer.pricePerMinCall)}/min',
+                        '${formatCurrency(astrologer.pricePerMinCall.toDouble())}/min',
                         style: tt.labelSmall?.copyWith(
                             color: AppColors.textDisabled, fontSize: 10),
                       ),
