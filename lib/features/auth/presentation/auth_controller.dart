@@ -210,6 +210,7 @@ class AuthController extends StateNotifier<AuthControllerState> {
   // ─── Sign out ────────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
+    // signOut() will automatically disconnect Socket.IO and unsubscribe from FCM topic
     await _ref.read(authNotifierProvider.notifier).signOut();
     await StorageService.instance.clear();
     state = const AuthControllerState();
@@ -224,6 +225,7 @@ class AuthController extends StateNotifier<AuthControllerState> {
       result.customer.toJson(),
       ttl: const Duration(days: 7),
     );
+    // setTokens() will automatically connect Socket.IO and subscribe to FCM topic
     await _ref.read(authNotifierProvider.notifier).setTokens(
           result.accessToken,
           result.refreshToken,
