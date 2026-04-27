@@ -346,7 +346,7 @@ class _AstrologerCard extends StatelessWidget {
                                       .withValues(alpha: 0.6),
                                   fontSize: 10)),
                           Text(
-                            '₹${astrologer.pricePerMinChat.toStringAsFixed(0)}/min',
+                            '₹${astrologer.pricePerMinChat.toStringAsFixed(2)}/min',
                             style: tt.labelMedium?.copyWith(
                                 color: c.accent,
                                 fontWeight: FontWeight.w700),
@@ -363,7 +363,7 @@ class _AstrologerCard extends StatelessWidget {
                                       .withValues(alpha: 0.6),
                                   fontSize: 10)),
                           Text(
-                            '₹${astrologer.pricePerMinCall.toStringAsFixed(0)}/min',
+                            '₹${astrologer.pricePerMinCall.toStringAsFixed(2)}/min',
                             style: tt.labelMedium?.copyWith(
                                 color: c.accent,
                                 fontWeight: FontWeight.w700),

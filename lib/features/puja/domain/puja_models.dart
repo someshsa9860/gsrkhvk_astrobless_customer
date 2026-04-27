@@ -5,7 +5,7 @@ class PujaBooking {
   final String? pujaImageUrl;
   final String devoteeName;
   final String status;
-  final int amount;
+  final double amount;
   final DateTime scheduledAt;
   final DateTime createdAt;
   final String? astrologerName;
@@ -33,7 +33,7 @@ class PujaBooking {
       pujaImageUrl: template?['imageUrl'] as String? ?? j['pujaImageUrl'] as String?,
       devoteeName: j['devoteeName'] as String? ?? '',
       status: j['status'] as String? ?? 'pending',
-      amount: (j['amount'] as num?)?.toInt() ?? 0,
+      amount: (j['amount'] as num?)?.toDouble() ?? 0.0,
       scheduledAt: DateTime.tryParse(j['scheduledAt'] as String? ?? '') ?? DateTime.now(),
       createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
       astrologerName: astrologer?['displayName'] as String?,

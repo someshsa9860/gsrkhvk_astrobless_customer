@@ -362,7 +362,7 @@ class _AstrologerCallTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          '₹${astrologer.pricePerMinCall.toStringAsFixed(0)}/min',
+                          '₹${astrologer.pricePerMinCall.toStringAsFixed(2)}/min',
                           style: tt.labelMedium?.copyWith(
                               color: c.accent,
                               fontWeight: FontWeight.w800),

@@ -344,7 +344,7 @@ class _PriceAndCTA extends StatelessWidget {
                     Text('Chat rate',
                         style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                     Text(
-                      '₹${chatPrice.toStringAsFixed(0)}/min',
+                      '₹${chatPrice.toStringAsFixed(2)}/min',
                       style: tt.titleMedium?.copyWith(
                           color: c.accent, fontWeight: FontWeight.w800),
                     ),
@@ -358,7 +358,7 @@ class _PriceAndCTA extends StatelessWidget {
                     Text('Call rate',
                         style: tt.labelSmall?.copyWith(color: c.textSecondary)),
                     Text(
-                      '₹${callPrice.toStringAsFixed(0)}/min',
+                      '₹${callPrice.toStringAsFixed(2)}/min',
                       style: tt.titleMedium?.copyWith(
                           color: c.accent, fontWeight: FontWeight.w800),
                     ),

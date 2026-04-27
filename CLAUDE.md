@@ -56,7 +56,7 @@ This is the **customer-facing app**. Customers use it to:
 1. **Follow root `CLAUDE.md` exactly.**
 2. **`camelCase` for Dart code, `snake_case` for file names.**
 3. **No token in insecure storage.** Tokens in `flutter_secure_storage` only.
-4. **Money is `double` everywhere.** Stored as float (e.g. `12.50` = ₹12.50). Never integer subunits. Format at display layer only via `formatAmount()`.
+4. **Money is `double` everywhere.** Stored as decimal rupees (e.g. 12.50 = ₹12.50). Never integer paise subunits. Format at display layer via `formatMoney()` or `formatMoneyExact()`.
 5. **JWT audience is `astrobless.customer`.** Never call `/v1/astrologer/*` or `/v1/admin/*`.
 6. **All API calls through the `ApiClient` singleton** (Dio instance).
 7. **Riverpod only for state.** No `setState` in non-trivial widgets.

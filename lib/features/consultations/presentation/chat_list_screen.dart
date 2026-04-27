@@ -387,7 +387,7 @@ class _AstrologerSearchTile extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '₹${price.toStringAsFixed(0)}/min',
+                              '₹${price.toStringAsFixed(2)}/min',
                               style: tt.labelMedium?.copyWith(
                                   color: c.accent,
                                   fontWeight: FontWeight.w800),
