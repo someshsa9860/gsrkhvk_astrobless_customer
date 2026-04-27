@@ -85,7 +85,7 @@ class SocketService {
     _connectionCtrl.add(SocketConnectionState.connecting);
 
     _socket = io.io(
-      '${AppConfig.wsBaseUrl}/consultation',
+      AppConfig.wsBaseUrl,
       io.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': accessToken})
