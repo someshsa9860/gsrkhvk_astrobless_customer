@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "257411804002",
+    "project_id": "g-austro",
+    "storage_bucket": "g-austro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:257411804002:android:308b8eedd90bdbf7c39a3b",
+        "android_client_info": {
+          "package_name": "com.gsc.qb.austro.user"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "257411804002-64m19j08ub89grtf61l6cnk504c2t5ec.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjX5xCa8Wl5yUkMu1x4rppi2a8Q7CsXso"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "257411804002-64m19j08ub89grtf61l6cnk504c2t5ec.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "257411804002-d4l1ra6d4089k8vdmsiqg6g7h2q8bquq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.gsc.qb.austro.user"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
